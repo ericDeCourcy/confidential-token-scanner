@@ -1,0 +1,9 @@
+Okay, this repo needs some help
+
+- [ ] The `scan-with-checkpoints` script scans for the function signature, NOT for events. We need to scan for events
+- [ ] We need a robust data storage method that checks for duplication and has lookups
+- [ ] We need to make this work for ethereum, for an actual live token
+
+
+- Here's the cUSDT token on Ethereum
+    https://etherscan.io/address/0xae0207c757aa2b4019ad96edd0092ddc63ef0c50
