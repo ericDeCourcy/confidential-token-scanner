@@ -2,7 +2,13 @@ Okay, this repo needs some help
 
 - [ ] The `scan-with-checkpoints` script scans for the function signature, NOT for events. We need to scan for events
 - [ ] We need a robust data storage method that checks for duplication and has lookups
-- [ ] We need to make this work for ethereum, for an actual live token
+    - oh shit we're gonna use sqlite3 
+    - [ ] Oh shit we need to install sqlite3 and see how to read the tables to ensure they're setup correctly
+- [x] We need to make this work for ethereum, for an actual live token
+- [ ] we should use tenderly api because everyone says its the best
+- [ ] For actually parsing the data, `better-sqlite3` may not be the best option. This is because queries are synchronous so it may take a while to get the results back.
+    - [ ] investigate alternatives for parsing large amounts of data from the table
+- [ ] For analysis, we will need to investigate the use of "proofed" or "non-proofed" encrypted values. Many folks will use encrypted values which makes it hella easy to figure out whats going on
 
 
 - Here's the cUSDT token on Ethereum

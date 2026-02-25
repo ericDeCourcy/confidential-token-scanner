@@ -35,10 +35,14 @@ module.exports = {
 Run this command in the root directory:
 
 ```
-$ npx hardhat run scripts/scan-with-checkpoints.js --network baseSepolia
+$ npx hardhat run scripts/scan-cUSDT.js --network ethereum
 ```
 
-This will scan the Inco "comfy" token, saving **checkpoints**. **Checkpoints** basically just means it continues to scan blocks after the last-saved block number, which is stored in `status.txt`. 
+This will scan the cUSDT confidential token which is live on ethereum and was used for the $ZAMA token auction.
+
+#TODO we still need checkpoints for this scanner
+#TODO we should remove the old scanners
+#TODO this scanner just creates a database, it still needs to actually perform analysis on the matching transactions
 
 ### Ouput
 
