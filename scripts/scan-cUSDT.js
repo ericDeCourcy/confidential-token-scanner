@@ -8,10 +8,12 @@ const finalBlock = 24490000;
 */
 
 const CHECKPOINT_FILENAME = "cUSDT_checkpoint.txt";
+const NUM_ITEMS_FILENAME = "cUSDT_numItems.txt";
 
 const cUSDTDeploymentBlock = 24096698;
 const startBlock = 24125000;
-const finalBlock = startBlock + 100000;
+const finalBlock = 24537892;  //top block on feb 25 2026
+
 
 // cUSDT was deployed in this tx: 
 // https://etherscan.io/tx/0x2eeb06d478ab37699ab18bc2cd90248eaf67f3a05c9995808ca5e949b4d1f606
@@ -34,14 +36,30 @@ async function loadCheckpoint() {
   }
 }
 
+async function loadNumItems() {
+  try {
+    const text = await fs.readFile(NUM_ITEMS_FILENAME, "utf8");
+    console.log("reading the file");
+    const parsedVal = parseInt(text, 10) + 1; //add 1 because the last recorded block is the one recorded
+    return parsedVal;
+  } catch (err) {
+    // If first run and file doesn't exist, start from startBlock
+    if (err.code === "ENOENT") {
+      return startBlock;
+    }
+    throw err;
+  }
+}
+
 
 
 async function main() {
   const checkpoint = await loadCheckpoint();
-  addTransactions(checkpoint);
+  const numItems = await loadNumItems();
+  await addTransactions(checkpoint,numItems);
 }
 
-async function addTransactions(startingBlock) {  
+async function addTransactions(startingBlock,numItems) {  
     const db = new Database("events.db");
 
     // TODO what does `removed` mean? its a feature of the logs - maybe re-orgs?
@@ -83,17 +101,19 @@ async function addTransactions(startingBlock) {
 
     const provider = hre.ethers.provider; 
 
-
-
+    let currentItems = numItems;
     let currentBlock = startingBlock;
 
     console.log("Got here");
     
     console.log(`currentBlock: ${currentBlock} --- finalBlock: ${finalBlock} --- difference: ${finalBlock - currentBlock}`);
 
-    while(currentBlock < finalBlock)
+
+    try 
     {
-        console.log(`scanning blocks ${currentBlock} to ${currentBlock + 9}`);
+      while(currentBlock < finalBlock && !shuttingDown)
+      {
+        console.log(`scanning blocks ${currentBlock} to ${currentBlock + 5}`);
 
         // here's a good transaction: https://etherscan.io/tx/0x8034620e07155d0206c0c368681fad1e3d3567c140b1ac6a7dfd769ed84878a7#eventlog
           // this is in block 24480551, its an unwrap tx
@@ -107,6 +127,7 @@ async function addTransactions(startingBlock) {
 
         for (const log of logs) {
           console.log(`txHash: ${log.transactionHash}`);
+          currentItems++;
         }
 
 
@@ -140,7 +161,7 @@ async function addTransactions(startingBlock) {
               block_hash: log.blockHash,
               tx_hash: log.transactionHash.toLowerCase(),
               tx_index: Number(log.transactionIndex),
-              log_index: Number(log.index), // ethers v6; if undefined, use log.logIndex
+              log_index: Number(log.index), 
               topic0: (log.topics?.[0] || "").toLowerCase(),
               topics_json: JSON.stringify(log.topics || []),
               data: log.data, //TODO: I don't think this field is anything, consider removing it
@@ -153,30 +174,60 @@ async function addTransactions(startingBlock) {
 
         insertLogsTx(rows);
 
-        fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+9).toString(), (err) => {
+        //records last block scanned so +9
+          // TODO updating this to run faster
+        await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+5).toString(), (err) => { 
           if (err) throw err;
         })
 
+        await fs.writeFile(NUM_ITEMS_FILENAME, currentItems.toString(), (err) => {
+          if(err) throw err;
+        })
 
         currentBlock += 10;
+
+        await sleep(1500); //add a crude sleep function to prevent alchemy api from timing out
+      }
+
     }
+    finally {
+      await db.close();
+      console.log("closed db");
 
-
-
-
-    db.close();
+      console.log(`checkpoint block = ${currentBlock+9}`);
+      console.log(`count of db items = ${currentItems}`);
+      console.log(`\nPress CTRL+C`);  //TODO idk why this needs to be pressed again
+    }
 }
 
 function labelFromFuncSig(funcSig) {
   switch(funcSig) {
-    case "0x2fb74e62": return "CONF_TRANSFER";
-    case "0x5bf4ef06": return "UNWRAP_W_PROOF";
+    case "0x2fb74e62": return "CONF_TRANSFER_W_PROOF";
+    case "0x5bebed7e": return "CONF_TRANSFER";
+    case "0x5bf4ef06": return "UNWRAP_W_PROOF"; 
     case "0xbf376c7a": return "WRAP";
     case "0xe8c15fd4": return "UNWRAP";
+    case "0xe95495b1": return "BID_W_PROOF";
+    case "0x6a761202": return "GNOSIS_EXEC";  //Call from a gnosis safe
+    case "0x6db28804": return "FINALIZE_REFUND";  // TODO What does this do?
+    case "0x1fad948c": return "HANDLE_OPS"; // pretty sure call from smart wallet
+    case "0xcef6d209": return "REDEEM_DELEGATIONS"; //metamask GSN-like thing. Wrapper
+    case "0x82ad56cb": return "AGGREGATE_MULTICALL"; //TODO what is this doing? Looks like one contract made a lot of these
     default: return null;
   }
 }
 
+// Handle shutdown
+let shuttingDown = false;
+
+process.on("SIGINT", async () => {
+  console.log("\nGracefully shutting down...");
+  shuttingDown = true;
+});
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 
 main().catch((error) => {

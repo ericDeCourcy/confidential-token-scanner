@@ -1,0 +1,36 @@
+with filtered as (
+    select
+        topic1
+        , topic2
+        , topic3
+        from ethereum.logs
+        where contract_address = 0xae0207c757aa2b4019ad96edd0092ddc63ef0c50
+   and topic0 = 0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9
+   and block_time >= CURRENT_DATE - INTERVAL '70' day
+)
+, addresses as (
+        select
+        LOWER(CONCAT('0x', TO_HEX(VARBINARY_SUBSTRING (topic1, 13, 20)))) as address
+        , topic3
+        from filtered
+        where topic1 is not null
+        union all
+    select
+        LOWER(CONCAT('0x', TO_HEX(VARBINARY_SUBSTRING (topic2, 13, 20)))) as address
+        , topic3
+        from filtered
+        where topic2 is not null
+        union all
+    select
+        LOWER(CONCAT('0x', TO_HEX(topic3))) as address
+        , topic3
+        from filtered
+        where topic3 is not null
+)
+select distinct
+    address
+        , topic3
+from addresses
+where address <> '0x0000000000000000000000000000000000000000'
+order by
+    address
