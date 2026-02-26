@@ -18,3 +18,8 @@ events.db
 ##db temp files
 events.db-shm
 events.db-wal
+*.db-wal
+*.db-shm
+
+#checkpoint files
+*checkpoint.txt
