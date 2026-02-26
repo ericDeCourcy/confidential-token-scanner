@@ -2,6 +2,9 @@ const hre = require("hardhat");
 const Database = require("better-sqlite3");
 const fs = require("fs/promises");
 
+const { labelFromFuncSig } = require("./lib/cUSDT-labels");
+
+
 /*
 const startBlock = 24480501;    //This is the block where the example transaction is
 const finalBlock = 24490000;
@@ -200,6 +203,7 @@ async function addTransactions(startingBlock,numItems) {
     }
 }
 
+/* //TODO delete this
 function labelFromFuncSig(funcSig) {
   switch(funcSig) {
     case "0x2fb74e62": return "CONF_TRANSFER_W_PROOF";
@@ -216,6 +220,7 @@ function labelFromFuncSig(funcSig) {
     default: return null;
   }
 }
+*/
 
 // Handle shutdown
 let shuttingDown = false;

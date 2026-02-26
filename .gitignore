@@ -1,7 +1,6 @@
 node_modules
 .env
 hardhat.config.js
-events.db
 
 # Hardhat files
 /cache
@@ -15,7 +14,9 @@ events.db
 /coverage
 /coverage.json
 
-##db temp files
+##db files
+events.db
+*.db
 events.db-shm
 events.db-wal
 *.db-wal
