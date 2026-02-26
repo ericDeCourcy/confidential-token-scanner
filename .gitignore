@@ -14,3 +14,7 @@ events.db
 # solidity-coverage files
 /coverage
 /coverage.json
+
+##db temp files
+events.db-shm
+events.db-wal
