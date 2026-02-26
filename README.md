@@ -16,7 +16,7 @@ const privateKey = "0x0123567890abcdef0123567890abcdef0123567890abcdef0123567890
 
 module.exports = {
   networks: {
-    baseSepolia: {
+    ethereum: {
       url: "<your alchemy url here>",
       accounts: [privateKey],
       gas: 2100000,
@@ -28,7 +28,7 @@ module.exports = {
 };
 ```
 
-3. in the config file, replace `<your alchemy url here>` with an alchemy RPC url. Should look something like this: `https://base-sepolia.g.alchemy.com/v2/aaaaaaaaaaaaaaaaaa`. Make sure it works for Base Sepolia
+3. in the config file, replace `<your alchemy url here>` with an alchemy RPC url. Should look something like this: `https://eth-mainnet.g.alchemy.com/v2/aaaaaaaaaaaaaaaaaa`
 
 ### Running
 
