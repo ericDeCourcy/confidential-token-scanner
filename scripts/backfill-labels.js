@@ -3,7 +3,7 @@
  * Backfill labels in events.db based on func_sig, but ONLY where label is NULL.
  *
  * Usage:
- *   node backfill_labels.js  //TODO is this true?
+ *   node backfill-labels.js  //TODO is this true?
  *
  * Notes:
  * - Uses the same mapping as your labelFromFuncSig().
