@@ -15,6 +15,7 @@ module.exports = {
 const privateKey = "0x0123567890abcdef0123567890abcdef0123567890abcdef0123567890abcdef";
 
 module.exports = {
+  defaultNetwork : "ethereum",  //This is important for running some scripts
   networks: {
     ethereum: {
       url: "<your alchemy url here>",
@@ -29,6 +30,15 @@ module.exports = {
 ```
 
 3. in the config file, replace `<your alchemy url here>` with an alchemy RPC url. Should look something like this: `https://eth-mainnet.g.alchemy.com/v2/aaaaaaaaaaaaaaaaaa`
+
+4. Set your default address in hardhat.config.js to ethereum to run certain scripts that need to query the chain
+
+```
+module.exports = {
+  defaultNetwork : "ethereum",  //Add this line
+  networks: {
+    ethereum: {   //make sure this is configured with your api key
+```
 
 ### Running
 
