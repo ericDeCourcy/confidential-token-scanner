@@ -15,8 +15,8 @@ hardhat.config.js
 /coverage.json
 
 ##db files
-events.db
-*.db
+#events.db hehe free db
+#*.db
 events.db-shm
 events.db-wal
 *.db-wal
