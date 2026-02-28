@@ -1,0 +1,54 @@
+{
+  "calls": [
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab9000000000000000000000000c5446ae729fe2f4f3d499476b877a666e68369e8"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab9000000000000000000000000e94f5971aabd9ed79faabc37462c3a162bb753d2"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab9000000000000000000000000825b4e0e5205145e0ceb7bd5adbeece0b13c2bff"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab90000000000000000000000003e6db43037a9454c4be9f1a6cdf6301c927d7f5f"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab9000000000000000000000000780c13a24483cd1486281036158c46f51f7a21db"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab90000000000000000000000006fc03c7d90858866dbe7cf3dcfaf0948743e39b1"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab9000000000000000000000000d4734911bc5adfec3846da6640a17e28f4093035"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab90000000000000000000000008107e4c767f2f138c881aa8217bd4aa5bf555d06"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab9000000000000000000000000fd78fad57ccb92222744c4c0c4193ea10436e4cb"
+    },
+    {
+      "target": "0x04a5b8C32f9c38092B008A4939f1F91D550C4345",
+      "allowFailure": true,
+      "callData": "0x72b38ab900000000000000000000000086d72e8ae54c79ef2e1bc444bcd3f2570c6b589e"
+    }
+  ]
+}
