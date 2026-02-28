@@ -1,6 +1,6 @@
 ### Setup
 
-1. This is a hardhat project, so make sure you have hardhat installed and stuff.
+1. This is a hardhat project, so make sure you have hardhat installed.
 
 2. You'll need to make a file called `hardhat.config.js` in the root directory. For that file, paste this in:
 
@@ -50,9 +50,7 @@ $ npx hardhat run scripts/scan-cUSDT.js --network ethereum
 
 This will scan the cUSDT confidential token which is live on ethereum and was used for the $ZAMA token auction.
 
-#TODO we still need checkpoints for this scanner
-#TODO we should remove the old scanners
-#TODO this scanner just creates a database, it still needs to actually perform analysis on the matching transactions
+
 
 **Here are the other scripts you can run**
 - `add-topic-rows.js` - this will add columns to your already existing table from `scan-cUSDT.js`, for topics 1, 2 and 3 of the event emission. Topic 0 is already recorded and is the event signature - TODO: integrate these table columns into `scan-cUSDT.js`
@@ -62,7 +60,7 @@ This will scan the cUSDT confidential token which is live on ethereum and was us
     ```
     node scripts/find-address.js 0x3a292b57e41d88309201f2df9cf46230c58008e0
     ```
-
+- `node scripts/totalExternalTransfers.js` - This will total up all "exotic" transfers - not involving the auction contracts or the wrapper. It will list the most transferred-with contracts first, then remove all of those which are auction related. Finally it totals the transfers which came from what seems to be "confidential transfer" calls. See **Discoveries** about this
 
 ### Ouput
 
@@ -82,7 +80,7 @@ A simple way to reconfigure this is a #TODO item
 
 #### 0.2% (95 of 47000) of transfers are to non-zama contracts
 - This means the majority are just interacting with the auction contract, which is NOW traceable. 
-  - The auction contract was NOT traceable at the time of the auction - the privacy function of the auction was to hide the settlement price. But the settlement price was used for all bidders.
+  - The auction contract was NOT traceable at the time of the auction - the privacy function of the auction was to hide the settlement price. But the settlement price was revealed and used for all bidders.
 - Out of rougly 47k transfers recorded, only about 100 of them were to addresses that weren't the wrapper or auction contracts.
 - Many accounts involved in these transfers show very little activity. "Interesting" transactions are between two non "safe" contracts (safe contracts being wrappers, auction contracts, zama distributor contracts, etc.)
 - Apparently heavily correlated with people actually calling the dang transfer function 
@@ -127,6 +125,7 @@ run:
 node scripts/total-external-transfers.js
 ```
 
+This is confirmed also by sorting for "TRANSFER" in the db under the labels column. There are about 95 matching entities.
 
 
 
