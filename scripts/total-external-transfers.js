@@ -1,22 +1,21 @@
 // this script exists to tally the number of contracts which only interact with a few contracts like the auction and the multisenders, and zero address for mints and burns.
 //  It will tally addresses with transfers outside of the norm, and it will tally addresses which have been transferred to a lot.
 
+// This script will check all transfer events for the sender and recipients, 
+// matching them to a list of "safe" addresses. These are addresses like the 
+// wrapper, zero address, and zama deployers. 
+// 
+// The addresses which had the most transfers are typically "safe" addresses and will be displayed in the first section of output.
+// The address and its associated number of transfer events
+//
+// Transfers NOT involving a safe address will be tallied and displayed below this
+// They will be ranked and these are called "fully external transfers"
+
 const Database = require("better-sqlite3");
 
-// 1. tally addresses with transfers both "totally safe" and outside the norm
-let safeOnlyTotal = 0;
 let externalTransferTotal = 0;
-let unknownTotal = 0;
 
 async function main() {
-
-    /*
-    const input = process.argv[2];
-    if (!input) {
-      console.error("Usage: node total-external-transfers.js <0xAddress>");
-      process.exit(1);
-    }
-      */
 
     const listOfAuctionWallets = [
         "0000000000000000000000000000000000000000",

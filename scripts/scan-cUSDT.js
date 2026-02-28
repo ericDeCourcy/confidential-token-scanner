@@ -136,16 +136,8 @@ async function addTransactions(startingBlock,numItems) {
             for (const row of rows) insertLog.run(row);
           });
 
-        // TODO: Log the transaction signature to understand what action is being taken (wrap, unwrap, transfer, etc)
-          // TODO: How do we handle internal transactions here? What if someone wraps/unwraps via a contract, such that the original call isn't one of our expected function signautres
-
-
-        // TODO: for each of the different types of transaction, create a rule on how the balance is affected
-          // ???? Do we want to do this in a separate file actually?
-          
-
-
-
+        // TODO: How do we handle internal transactions here? What if someone wraps/unwraps via a contract, such that the original call isn't one of our expected function signautres
+    
         const { chainId } = await provider.getNetwork();
 
         // TODO: understand why this is down here while the insertLogsTx thing is up there
@@ -176,7 +168,6 @@ async function addTransactions(startingBlock,numItems) {
         insertLogsTx(rows);
 
         //records last block scanned so +9
-          // TODO updating this to run faster - change it back later
         await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+10).toString(), (err) => { 
           if (err) throw err;
         })
@@ -185,10 +176,12 @@ async function addTransactions(startingBlock,numItems) {
           if(err) throw err;
         })
 
+        // Increment block by 10 to do the next round 
         currentBlock += 10;
 
-        await sleep(0); //add a crude sleep function to prevent alchemy api from timing out
-                            // this isn't needed until it starts timing out around the auction time
+        // await sleep(0); //add a crude sleep function to prevent alchemy api from timing out
+        //@dev this is very handy when your scanner hits the auction and reveal - lots of activity on those days.
+        //    I used 3000 to fight rate-limiting from alchemy
       }
 
     }
