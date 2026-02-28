@@ -106,8 +106,6 @@ async function addTransactions(startingBlock,numItems) {
 
     let currentItems = numItems;
     let currentBlock = startingBlock;
-
-    console.log("Got here");
     
     console.log(`currentBlock: ${currentBlock} --- finalBlock: ${finalBlock} --- difference: ${finalBlock - currentBlock}`);
 
@@ -116,7 +114,7 @@ async function addTransactions(startingBlock,numItems) {
     {
       while(currentBlock < finalBlock && !shuttingDown)
       {
-        console.log(`scanning blocks ${currentBlock} to ${currentBlock + 5}`);
+        console.log(`scanning blocks ${currentBlock} to ${currentBlock + 9}`);
 
         // here's a good transaction: https://etherscan.io/tx/0x8034620e07155d0206c0c368681fad1e3d3567c140b1ac6a7dfd769ed84878a7#eventlog
           // this is in block 24480551, its an unwrap tx
@@ -179,7 +177,7 @@ async function addTransactions(startingBlock,numItems) {
 
         //records last block scanned so +9
           // TODO updating this to run faster - change it back later
-        await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+5).toString(), (err) => { 
+        await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+10).toString(), (err) => { 
           if (err) throw err;
         })
 
