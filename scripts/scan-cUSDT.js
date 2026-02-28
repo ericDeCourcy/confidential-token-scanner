@@ -178,7 +178,7 @@ async function addTransactions(startingBlock,numItems) {
         insertLogsTx(rows);
 
         //records last block scanned so +9
-          // TODO updating this to run faster
+          // TODO updating this to run faster - change it back later
         await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+5).toString(), (err) => { 
           if (err) throw err;
         })
@@ -189,7 +189,8 @@ async function addTransactions(startingBlock,numItems) {
 
         currentBlock += 10;
 
-        await sleep(1500); //add a crude sleep function to prevent alchemy api from timing out
+        await sleep(0); //add a crude sleep function to prevent alchemy api from timing out
+                            // this isn't needed until it starts timing out around the auction time
       }
 
     }
@@ -203,24 +204,6 @@ async function addTransactions(startingBlock,numItems) {
     }
 }
 
-/* //TODO delete this
-function labelFromFuncSig(funcSig) {
-  switch(funcSig) {
-    case "0x2fb74e62": return "CONF_TRANSFER_W_PROOF";
-    case "0x5bebed7e": return "CONF_TRANSFER";
-    case "0x5bf4ef06": return "UNWRAP_W_PROOF"; 
-    case "0xbf376c7a": return "WRAP";
-    case "0xe8c15fd4": return "UNWRAP";
-    case "0xe95495b1": return "BID_W_PROOF";
-    case "0x6a761202": return "GNOSIS_EXEC";  //Call from a gnosis safe
-    case "0x6db28804": return "FINALIZE_REFUND";  // TODO What does this do?
-    case "0x1fad948c": return "HANDLE_OPS"; // pretty sure call from smart wallet
-    case "0xcef6d209": return "REDEEM_DELEGATIONS"; //metamask GSN-like thing. Wrapper
-    case "0x82ad56cb": return "AGGREGATE_MULTICALL"; //TODO what is this doing? Looks like one contract made a lot of these
-    default: return null;
-  }
-}
-*/
 
 // Handle shutdown
 let shuttingDown = false;
