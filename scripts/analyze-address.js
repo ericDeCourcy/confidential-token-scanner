@@ -206,7 +206,7 @@ async function analyzeActions(txs, db, targetTopic)
             actionString = ` 🎯  TARGET BID AT ${bidPrice}`;
 
             const targetBidsMaxNumber = rangeHigh % bidPrice; //max number of high bids at price x
-            targetBidsMax += lowBidsMaxNumber*bidPrice;
+            targetBidsMax += targetBidsMaxNumber*bidPrice;
           }
           else
           {

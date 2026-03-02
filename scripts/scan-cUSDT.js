@@ -114,7 +114,7 @@ async function addTransactions(startingBlock,numItems) {
     {
       while(currentBlock < finalBlock && !shuttingDown)
       {
-        console.log(`scanning blocks ${currentBlock} to ${currentBlock + 9}`);
+        console.log(`scanning blocks ${currentBlock} to ${currentBlock + 10}`);
 
         // here's a good transaction: https://etherscan.io/tx/0x8034620e07155d0206c0c368681fad1e3d3567c140b1ac6a7dfd769ed84878a7#eventlog
           // this is in block 24480551, its an unwrap tx
@@ -179,7 +179,7 @@ async function addTransactions(startingBlock,numItems) {
         // Increment block by 10 to do the next round 
         currentBlock += 10;
 
-        // await sleep(0); //add a crude sleep function to prevent alchemy api from timing out
+         await sleep(100); //add a crude sleep function to prevent alchemy api from timing out
         //@dev this is very handy when your scanner hits the auction and reveal - lots of activity on those days.
         //    I used 3000 to fight rate-limiting from alchemy
       }
@@ -189,7 +189,7 @@ async function addTransactions(startingBlock,numItems) {
       await db.close();
       console.log("closed db");
 
-      console.log(`checkpoint block = ${currentBlock+9}`);
+      console.log(`checkpoint block = ${currentBlock+5}`);
       console.log(`count of db items = ${currentItems}`);
       console.log(`\nPress CTRL+C`);  //TODO idk why this needs to be pressed again
     }
