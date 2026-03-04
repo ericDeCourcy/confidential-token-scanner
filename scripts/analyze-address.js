@@ -14,6 +14,9 @@
 const hre = require("hardhat");
 const Database = require("better-sqlite3");
 
+const claimingPhaseBlock = 24369034;  //This is the block where we entered the claiming phase. After this block, we can do refunds. 
+  // TODO: we may need to check that there aren't more bid submissions right before this or something. Like, within the same block
+
 
 function normalizeHex0x(s) {
   if (!s) return null;
@@ -126,6 +129,8 @@ async function analyzeActions(txs, db, targetTopic)
 {
     const provider = hre.ethers.provider; 
 
+    const bids = new Map;
+
     let rangeHigh =0n;
     let rangeLow =0n;
     let bidPrice =0n; //TODO change this to array, possibly with block numbers too 
@@ -139,10 +144,14 @@ async function analyzeActions(txs, db, targetTopic)
     const scannedAddress = "0x" + targetTopic.slice(-40);
     console.log(`THIS IS THE ADDRESS: ${scannedAddress}`);
 
+    let rangeHighDecimals = 0;
+    let rangeLowDecimals = 0;
 
 
-    let refundString = "";
     let actionString = "";
+    let bidString = "";
+    let rangeHighString = "";
+    let lastActionBlock = 0;
 
     //for all hashes
     for (const tx of txs) 
@@ -152,9 +161,26 @@ async function analyzeActions(txs, db, targetTopic)
 
       const blockNumber = Number(blockStr);
       const txHash = txHashStr;
-      const label = labelStr;
+      let label = labelStr;
 
       actionString = "";
+
+      // special case to detect end of auction
+      // at end of auction, delete all bids which didn't hit. Those now get "refunded"
+      // TODO: Technically this isn't perfect - it will remove bids and credit the user's account back
+      //  Theoretically before getting refunded, a user can send or unwrap their balance which will be lower than if they had been refunded
+      if(lastActionBlock < claimingPhaseBlock && blockNumber >= claimingPhaseBlock)
+      {
+        console.log("24369034:AUCTION ENTERED CLAIMING PHASE");
+
+        // Delete bids which are "under" price and revert balance back
+        for (const key of bids.keys()) {
+          if(bids.get(key).bidPrice < 50000)
+          {
+            bids.delete(key);
+          }
+        }
+      }
 
       switch(label){
         case "wrap":
@@ -167,7 +193,6 @@ async function analyzeActions(txs, db, targetTopic)
 
           const thisTx = await provider.getTransaction(txHash);
           const value = BigInt("0x" + thisTx.data.slice(-64));
-          //console.log(`value = ${value}`);
 
           rangeHigh += value;
           rangeLow += value;
@@ -188,16 +213,17 @@ async function analyzeActions(txs, db, targetTopic)
           
           const thisTx = await provider.getTransaction(txHash);
           bidPrice = BigInt("0x" + thisTx.data.slice(10,74));
+          let maxPaidForBid = 0; 
 
           if(bidPrice > 50000)
           {
-            console.log("🚨 Bid above settlement price! - This case has not yet been accounted for! 🚨");
             // right now, if bidding under the settlement price then we can just assume they never recieved tokens for their bid, and the refund will be the full amount
             actionString = ` ⬆️ HIGH BID AT ${bidPrice}`;
 
-            const highBidsMaxNumber = rangeHigh % bidPrice; //max number of high bids at price x
-            highBidsMax += highBidsMaxNumber*bidPrice;
 
+            const highBidsMaxNumber = rangeHigh / bidPrice; //max number of high bids at price x
+            highBidsMax += highBidsMaxNumber*bidPrice;
+            maxPaidForBid = highBidsMaxNumber*bidPrice;
             // TODO implement a checker for zama token transfers from the auction
 
           }
@@ -205,15 +231,17 @@ async function analyzeActions(txs, db, targetTopic)
           {
             actionString = ` 🎯  TARGET BID AT ${bidPrice}`;
 
-            const targetBidsMaxNumber = rangeHigh % bidPrice; //max number of high bids at price x
+            const targetBidsMaxNumber = rangeHigh / bidPrice; //max number of high bids at price x
             targetBidsMax += targetBidsMaxNumber*bidPrice;
+            maxPaidForBid = targetBidsMaxNumber*bidPrice;
           }
           else
           {
             actionString = ` ⬇️  LOW BID AT ${bidPrice}`;
 
-            const lowBidsMaxNumber = rangeHigh % bidPrice; //max number of high bids at price x
+            const lowBidsMaxNumber = rangeHigh / bidPrice; //max number of high bids at price x
             lowBidsMax += lowBidsMaxNumber*bidPrice;
+            maxPaidForBid = lowBidsMaxNumber*bidPrice;
           }
 
           // decrease rangeLow down to the modulo of this value vs rangeHigh
@@ -224,6 +252,13 @@ async function analyzeActions(txs, db, targetTopic)
 
           rangeLow = newRangeLow; //TODO is the temp value even necessary here?
 
+          //Now lets find the bidId just to track it for cancellations/reimbursements
+          // first pull up the transaction, then filter for "bid submitted" log, then get the topic of the bid id
+
+          const receipt = await provider.getTransactionReceipt(txHash);
+          const bidId = BigInt(getTopic1FromReceipt(receipt));
+
+          bids.set(bidId, {maxPaidForBid, bidPrice});
 
           break;
         }
@@ -238,8 +273,6 @@ async function analyzeActions(txs, db, targetTopic)
 
           const receipt = await provider.getTransactionReceipt(txHash);
 
-          //console.log(`tx reciept logs: ${JSON.stringify(receipt.logs[0], null, 2)}`)
-          //console.log(`${receipt.logs[0].topics[0]}`);
           if(receipt.logs[0].topics[0] = "0x38c3a63c4230de5b741f494ffb54e3087104030279bc7bccee8ad9ad31712b21")
           {
             //if first log is a FHE-GE
@@ -248,9 +281,9 @@ async function analyzeActions(txs, db, targetTopic)
             const lhs = logData.slice(2,66);
             const rhs = logData.slice(66,130);
 
-            //console.log(`lhs: ${lhs}`);
-            //console.log(`rhs: ${rhs}`);
 
+            // if the handle being unwrapped matches the current balance handle, thats a full unwrap!
+            //  otherwise, we can't be sure exactly how much was unwrapped
             if(lhs == rhs)
             {
               actionString = "\t✅ TOTAL BALANCE UNWRAPPED";
@@ -272,6 +305,7 @@ async function analyzeActions(txs, db, targetTopic)
           const tx = await provider.getTransaction(txHash);
 
           // look for this string: 72b38ab9000000000000000000000000 + <address>
+            // This is for a sub-call to "refund user"
           const stringToSearch = `72b38ab9000000000000000000000000${targetTopic.slice(-40)}`;
           const found = JSON.stringify(tx.data).includes(stringToSearch);
 
@@ -285,6 +319,8 @@ async function analyzeActions(txs, db, targetTopic)
             console.log("🚨 MULTICALL - refund call not found for address! 🚨");
             break;
           }
+
+          // NOTE: We DON'T break here, so that it continues on to the refund user branch
         }
 
         case "refund_user":
@@ -293,41 +329,161 @@ async function analyzeActions(txs, db, targetTopic)
           //increase range high by max refund
           //rangeHigh += maxRefund;
 
-          rangeHigh = rangeHighBeforeRefund;
-          rangeHighBeforeRefund = 0n;
+          //rangeHigh = rangeHighBeforeRefund;
+          //rangeHighBeforeRefund = 0n;
 
           // reset maxRefund
-          maxRefund = 0n;
-          console.log("got to refund user");
+//          maxRefund = 0n;
+
+          // TODO: go through and delete all bids that apply to the user
+
           break;
         }
 
-        default: { console.log("🚨 UNKNOWN ACTION - this func sig has not yet been accounted for! 🚨"); }
+        case "finalize_refund":
+        {
+          console.log("Finalize refund case");
+          break;
+        }
+
+        case "cancel_bid":
+        {
+          // TODO: I think if someone cancels a bid, then we can reduce their minimimum balance to their theoretical max minus all bids
+
+
+          // Find the bid id of the bid being cancelled (within tx input data)
+          const thisTx = await provider.getTransaction(txHash);
+          const bidId = BigInt("0x" + thisTx.data.slice(-6));  //Conveniently the last and only piece of input data
+
+          //If bid exists, delete it
+          if(bids.get(bidId))
+          {
+            bids.delete(bidId);
+          }
+          else
+          {
+            // This means somehow we missed the bid placement for this address
+            console.log("🚨 UH OH - Attempting to delete a bid that doesn't exist 🚨");
+          }
+
+          break;
+        }
+
+        case "finalize_unwrap":
+        {
+          // go and find the number of USDT tokens transferred out
+
+          const receipt = await provider.getTransactionReceipt(txHash);
+          const unwrappedAmount = BigInt(getUnwrappedAmountFromReceipt(receipt));
+          const unwrappedDecimals = Number(unwrappedAmount) / 1000000;
+
+          label = label + ` (${unwrappedDecimals} USDT)`;
+
+          // TODO: based on bids which hit and which did not hit, we can use this to guess about an account's state
+
+          // An unwrap should always precede this,
+          //  if the unwrap is a "full" unwrap, the balance will already be zero and we can skip this
+          //  otherwise, we can subtract the "not full" unwrap now
+          if(rangeHigh != 0)
+          {
+            if(rangeHigh >= unwrappedAmount)
+            {
+              rangeHigh -= unwrappedAmount;
+            }
+            else
+            {
+              console.log("🚨 UH OH! Somehow we have unwrapped more than the max balance");
+            }
+          }
+          
+
+
+          // if rangeHighDecimals - unwrapped > bidSize for any bid, lower that bid size
+          // TODO: this doesn't work because we reduce range in the "unwrap" phase, not "finalize unwrap". We end up with negative numbers if we use this
+          /*
+          for (const key of bids.keys()) {
+            if(bids.get(key).maxPaidForBid > rangeHigh)
+            {
+              bids.get(key).maxPaidForBid = rangeHigh;
+            }
+          }
+          */
+          
+
+          break;
+        }
+
+        case "claim":
+        {
+          // Just going to keep it simple, probably there is more to it here
+          // delete all bids that are at or above target price
+          for (const key of bids.keys()) {
+            if(bids.get(key).bidPrice > 49999)
+            {
+              bids.delete(key);
+            }
+          }
+
+          // find zama tokens which are disbursed in this TX
+          const receipt = await provider.getTransactionReceipt(txHash);
+          const zamaDisbursed = BigInt(getZamaDisbursedFromReceipt(receipt));
+          const usdtPaid = Number(zamaDisbursed / BigInt(1000000000000000000)) * 50000;
+          const usdtPaidDecimals = usdtPaid / 1000000;
+          console.log(`\tUSDT PAID TOTAL: ${usdtPaidDecimals}`); 
+
+          //console.log(`claim tx hash ${txHash}`);
+          rangeHigh -= BigInt(usdtPaid);
+          break;
+        }
+
+        default: { console.log(`🚨 UNKNOWN ACTION - this label (${label}) has not yet been accounted for! 🚨`); }
       }
 
+      rangeLowDecimals = Number(rangeLow) / 1000000;
+      rangeHighDecimals = Number(rangeHigh) / 1000000;
 
+      // Construct the bids string
+      bidString = "";
 
+      // construct rangeHighString beginning
+      rangeHighString = `${rangeHighDecimals}`;
 
-      if(maxRefund != 0)
+      if(bids.size > 0) //if bids is not zero
       {
-        refundString = `\tBids = {0,${maxRefund}}`;
-        // TODO improve these so its clear what prices the bids are at
+        
+        for(const [key,value] of bids)
+        {
+          valueDecimals = Number(value.maxPaidForBid)/1000000;
+          bidString = bidString + `\tBid_${key}: {0, ${valueDecimals}}`;
+
+          // TODO: finish updating to using "range high string" everywhere, replaces bidString and rangeHighDecimals
+          rangeHighString = rangeHighString + ` - BID_${key}`;
+        }
       }
-      else
-      {   //This is empty when there is no bid awaiting fill/refunding
-        refundString = "";
-      }
+
+
+      if(label == "aggregate_multicall"){label = "aggregate_multicall (refund)"};
 
       if(rangeHigh == rangeLow)
       {
-        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLow}}${refundString}`);
+        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}}`+bidString);
       }
       else
       {
-        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLow}, ${rangeHigh}}${refundString}`);
+        //console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}, ${rangeHighDecimals}}`+bidString);
+        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}, ${rangeHighString}}`);
+      }
 
+      if(bids.size > 0)
+      {
+        for(const [key,value] of bids)
+          {
+            valueDecimals = Number(value.maxPaidForBid)/1000000;
+            console.log(`\tBID_${key}: {0, ${valueDecimals}} @Price: ${value.bidPrice}`);
+          }
       }
   
+      lastActionBlock = blockNumber;
      
       //    Does not change balance range
       //  case unwrap
@@ -335,6 +491,51 @@ async function analyzeActions(txs, db, targetTopic)
     }
 
     // TODO: is it possible to fork ethereum at that very moment and check the handle which stores user balance
+
+
+}
+
+
+
+/**
+ * @param {Object} receipt - Transaction receipt
+ * @param {string} eventSignature - e.g. "Transfer(address,address,uint256)"
+ * @returns {string|null} topic[1] as hex string or null
+ */
+function getTopic1FromReceipt(receipt) {
+  if (!receipt?.logs) return null;
+
+  const bidSubmittedTopic = "0x5986d4da84b4e4719683f1ba6994a5bac9ff76c75db61b1a949e5b7d3424e892";  //"bidSubmitted" event
+
+  for (const log of receipt.logs) {
+    if (log.topics && log.topics[0] === bidSubmittedTopic) {
+      return ("0x" + log.topics[1].slice(-6)) ?? null;  //We can use 6 chars for now because i don't think the number of bids exceeded the max val there
+    }
+  }
+
+  return null;
+}
+
+function getUnwrappedAmountFromReceipt(receipt) {
+  
+  const unwrapFinalizedTopic = "0x2d4edf3c2943002120f53dab3f8940043f34799f4a92ab90f2f81f7dd004a49e";
+  
+  for(const log of receipt.logs) {
+    if(log.data && log.topics[0] === unwrapFinalizedTopic) {
+      return ("0x" + log.data.slice(-64)) ?? null;
+    }
+  }
+}
+
+function getZamaDisbursedFromReceipt(receipt) {
+
+  const zamaDisbursedTopic = "0x63f3c1dfe868c93b4c1f789017d37f86d91f0df374cd4f16155c54dba820cb20";
+
+  for(const log of receipt.logs) {
+    if(log.data && log.topics[0] === zamaDisbursedTopic) {
+      return (log.data);
+    }
+  }
 }
 
 main();

@@ -22,8 +22,6 @@ const finalBlock = 24537892;  //top block on feb 25 2026
 // https://etherscan.io/tx/0x2eeb06d478ab37699ab18bc2cd90248eaf67f3a05c9995808ca5e949b4d1f606
 //  block 24096698
 
-const sendersByRecipient = {};
-
 async function loadCheckpoint() {
   try {
     const text = await fs.readFile(CHECKPOINT_FILENAME, "utf8");
@@ -43,7 +41,7 @@ async function loadNumItems() {
   try {
     const text = await fs.readFile(NUM_ITEMS_FILENAME, "utf8");
     console.log("reading the file");
-    const parsedVal = parseInt(text, 10) + 1; //add 1 because the last recorded block is the one recorded
+    const parsedVal = parseInt(text, 10); 
     return parsedVal;
   } catch (err) {
     // If first run and file doesn't exist, start from startBlock

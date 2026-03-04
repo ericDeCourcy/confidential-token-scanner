@@ -22,5 +22,40 @@ Okay, this repo needs some help
         - $use
 - [ ] Remove the cUSDT_numItems.txt from git tracking
 
+### For Analyze addresses
+- [ ] Reformat the "action" strings and such so that they are all neat - ensure they display bid ids and store that
+- [ ] When did claiming open and allow refunds to occur?
+- [ ] We need to know where `hasClaimedAllocation` is set when bids are successful
+    - ZamaTokenDistributed event and TokenRefunded event - 0x04a5b8C32f9c38092B008A4939f1F91D550C4345
+- [ ] For the auction, does someone need to claim their allocation before a refund can be computed?
+- [ ] For on-the-target priced bids, is there some factor for getting the amount you'll receive? 
+    - https://etherscan.io/address/0x04a5b8c32f9c38092b008a4939f1f91d550c4345?mtd=0x37d6510d~Open%20Claiming%20Phase#code#F1#L923
+        - settlementData.remainingSupply = 189381879    //This should represent the number of ZAMA tokens remaining before the 50000 price level
+        - _getTotalRequestedQuantityByPrice[5000] = 393737736   //This is the denominator for the "factor"
+            - Factor = 0.480984833
+- [ ] After "claim" or "refund", we can clear the bids mapping
+    - I think after claim we can delete all bids at or above target
+    - and after refund we can delete all bids below target
+- [ ] Reformat the display of tx hashes and etherscan links to just have 1, in-order list of etherscan links
+
+### Addresses to test with 
+0xAb671e448a2c48f6355c8030621f25033e3Be899
+0xfBf13c45D7498776aAE005998B06EC2177542ff1
+0xa15fa77449243edfbeb7c35f5c551ece256a472e
+
+### How to display data
+- A balance can be expressed as a sum of different values
+- Those values may be unknown, but can have constraints. For shorthand we can use "ranges"
+- Over time those values will get solved and they can be back-propogated
+- Over time we get more and more constraints. 
+    - [ ] Perhaps there is a method to solve systems of equations
+- uh ohes - bid ranges will ALSO be constrained by other bids. For example, bid 1 can be full range of accts balance. Then bid 2 is accts full range - bid1 (unknown just yet)
+
 - Here's the cUSDT token on Ethereum
     https://etherscan.io/address/0xae0207c757aa2b4019ad96edd0092ddc63ef0c50
+- Here's the transaction that opened "claiming" phase for the auction  
+    - https://etherscan.io/tx/0x7ff07908c0dcf977a14e08b33f4d9401f25c94d0ede5db1e33955ca57fe9fe88
+    - user refunds can happen after this
+    - Block 24369034
+- Here's the transaction that opened "settlement" phase:
+    - https://etherscan.io/tx/0xd47893a92ba2b4adcb76a11262081eda57244330ee61269a008a506ffb6de713 
