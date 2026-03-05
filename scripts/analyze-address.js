@@ -180,6 +180,8 @@ async function analyzeActions(txs, db, targetTopic)
             bids.delete(key);
           }
         }
+        rangeLow = setRangeLowIfBidsEmpty(rangeLow, rangeHigh, bids);
+
       }
 
       switch(label){
@@ -299,8 +301,7 @@ async function analyzeActions(txs, db, targetTopic)
 
         case "aggregate_multicall":
         {
-          // check if there is chunk of the txdata that has your address and "0x72b38ab9" 
-
+          // check if there is chunk of the txdata that has your address and "0x72b38ab9" (for refund)
           // first get the tx data
           const tx = await provider.getTransaction(txHash);
 
@@ -309,14 +310,34 @@ async function analyzeActions(txs, db, targetTopic)
           const stringToSearch = `72b38ab9000000000000000000000000${targetTopic.slice(-40)}`;
           const found = JSON.stringify(tx.data).includes(stringToSearch);
 
+          label = "aggregate_multicall (refund)";
     
-          // shouldn't happen - but in case it do
+          // if this isn't an aggregated "refund" call, this may be an aggregated "disburse" call
           if(!found)
           {
-            // TODO: upgrade this to account for weird possibility same address is used in multicall and its unaccounted for
-              // basically, detect if found or detect if address is found
+            // TODO: affect action string to signify this is a disbursal
 
-            console.log("🚨 MULTICALL - refund call not found for address! 🚨");
+            const receipt = await provider.getTransactionReceipt(txHash);
+            const zamaDisbursed = BigInt(getZamaDisbursedFromReceipt(receipt, scannedAddress));
+            const usdtPaid = Number(zamaDisbursed / BigInt(1000000000000000000)) * 50000;
+            const usdtPaidDecimals = usdtPaid / 1000000;
+            actionString = `\n\tUSDT PAID TOTAL: ${usdtPaidDecimals} for ${Number(zamaDisbursed / BigInt(1000000000000000000))} ZAMA`; 
+  
+            //console.log(`claim tx hash ${txHash}`);
+            rangeHigh -= BigInt(usdtPaid);
+
+            // Because this is a disburse, delete all bids that are at or above target price. They are now filled
+            for (const key of bids.keys()) {
+              if(bids.get(key).bidPrice > 49999)
+              {
+                bids.delete(key);
+              }
+            }
+            rangeLow = setRangeLowIfBidsEmpty(rangeLow, rangeHigh, bids);
+
+
+            label = "aggregate_multicall (disburse)";
+
             break;
           }
 
@@ -342,7 +363,7 @@ async function analyzeActions(txs, db, targetTopic)
 
         case "finalize_refund":
         {
-          console.log("Finalize refund case");
+          // TODO: does anyhting need to happen here?
           break;
         }
 
@@ -354,11 +375,15 @@ async function analyzeActions(txs, db, targetTopic)
           // Find the bid id of the bid being cancelled (within tx input data)
           const thisTx = await provider.getTransaction(txHash);
           const bidId = BigInt("0x" + thisTx.data.slice(-6));  //Conveniently the last and only piece of input data
+          const bidIdToDisplay = Number(bidId);
+
+          actionString = (` (BID_${bidIdToDisplay})`);
 
           //If bid exists, delete it
           if(bids.get(bidId))
           {
             bids.delete(bidId);
+            rangeLow = setRangeLowIfBidsEmpty(rangeLow, rangeHigh, bids);
           }
           else
           {
@@ -423,13 +448,14 @@ async function analyzeActions(txs, db, targetTopic)
               bids.delete(key);
             }
           }
+          rangeLow = setRangeLowIfBidsEmpty(rangeLow, rangeHigh, bids);
 
           // find zama tokens which are disbursed in this TX
           const receipt = await provider.getTransactionReceipt(txHash);
-          const zamaDisbursed = BigInt(getZamaDisbursedFromReceipt(receipt));
+          const zamaDisbursed = BigInt(getZamaDisbursedFromReceipt(receipt, scannedAddress));
           const usdtPaid = Number(zamaDisbursed / BigInt(1000000000000000000)) * 50000;
           const usdtPaidDecimals = usdtPaid / 1000000;
-          console.log(`\tUSDT PAID TOTAL: ${usdtPaidDecimals}`); 
+          actionString = `\n\tUSDT PAID TOTAL: ${usdtPaidDecimals} for ${Number(zamaDisbursed / BigInt(1000000000000000000))} ZAMA`; 
 
           //console.log(`claim tx hash ${txHash}`);
           rangeHigh -= BigInt(usdtPaid);
@@ -460,9 +486,6 @@ async function analyzeActions(txs, db, targetTopic)
           rangeHighString = rangeHighString + ` - BID_${key}`;
         }
       }
-
-
-      if(label == "aggregate_multicall"){label = "aggregate_multicall (refund)"};
 
       if(rangeHigh == rangeLow)
       {
@@ -527,15 +550,28 @@ function getUnwrappedAmountFromReceipt(receipt) {
   }
 }
 
-function getZamaDisbursedFromReceipt(receipt) {
+function getZamaDisbursedFromReceipt(receipt, address) {
 
+  // Actually called "ZamaTokenDistributed"
+  // TODO update all mentions of this in the code to say "distributed" and not "disbursed"
   const zamaDisbursedTopic = "0x63f3c1dfe868c93b4c1f789017d37f86d91f0df374cd4f16155c54dba820cb20";
 
   for(const log of receipt.logs) {
     if(log.data && log.topics[0] === zamaDisbursedTopic) {
-      return (log.data);
+      if(log.topics[1] === "0x000000000000000000000000"+address.slice(-40)) {
+        return (log.data);
+      }
     }
   }
+}
+
+function setRangeLowIfBidsEmpty(rangeLow, rangeHigh, bids) {
+  if(bids.size == 0)
+  {
+    return rangeHigh; //sets rangeLow to rangeHigh if no more bids
+  }
+  else return rangeLow;
+
 }
 
 main();

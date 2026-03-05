@@ -1,0 +1,24 @@
+cUSDC
+0xe978F22157048E5DB8E5d07971376e86671672B2
+deployed https://etherscan.io/tx/0xc4795dcb1554d8e2dd718bca62c2107f346954973072ad781bab27147f6a1664
+	https://etherscan.io/block/24096697
+
+cWETH
+0xda9396b82634Ea99243cE51258B6A5Ae512D4893
+https://etherscan.io/tx/0xf1d8c691a4db0974cbfb6d5e638ae9204d19a1733b65e6e41e934d9acf50e921
+	https://etherscan.io/block/24096699
+	
+cBRON
+0x85dE671c3bec1aDeD752c3Cea943521181C826bc
+https://etherscan.io/tx/0xa779010ac9c5e5117b225f1ad387c33747a27ae91c429b8004ecb55643bfe0c5
+	https://etherscan.io/block/24096700
+	
+cZAMA
+0x80cb147fd86dc6dee3eee7e4cee33d1397d98071
+https://etherscan.io/tx/0x45633b2aab6c5c6315c172eae43ecc3d3d41644a6bbfdea0f06d98c2c399c43a
+	https://etherscan.io/block/24096701
+
+ctGBP
+https://etherscan.io/address/0xa873750ccbafd5ec7dd13bfd5237d7129832edd9#tokentxns
+0x7bee57213dda8d8b4c15cccef163e7b8767989deb0181b855dc98bf00e0b46ec
+	https://etherscan.io/block/24117438
