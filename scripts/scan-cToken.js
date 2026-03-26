@@ -1,6 +1,8 @@
 const hre = require("hardhat");
 const Database = require("better-sqlite3");
 const fs = require("fs/promises");
+const path = require("path");
+
 
 const { labelFromFuncSig } = require("./lib/cUSDC-labels"); //TODO make these labels
 
@@ -102,8 +104,9 @@ async function main() {
 
 
   const tokenAddress = getAddressFromToken(token);
-  const checkpoint = await loadCheckpoint(`${token}_checkpoint.txt`);
-  const numItems = await loadNumItems(`${token}_numItems.txt`);
+  const checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `${token}_checkpoint.txt`));
+  const numItems = await loadNumItems(path.join(__dirname, "checkpoints", `${token}_numItems.txt`));
+
   await addTransactions(checkpoint,numItems,token,tokenAddress,sleepRate);
 }
 
@@ -222,11 +225,11 @@ async function addTransactions(startingBlock,numItems,token,tokenAddress,sleepRa
         insertLogsTx(rows);
 
         //records last block scanned so +9
-        await fs.writeFile(`${token}_checkpoint.txt`, (currentBlock+9).toString(), (err) => { 
+        await fs.writeFile(path.join(__dirname, "checkpoints", `${token}_checkpoint.txt`), (currentBlock+9).toString(), (err) => { 
           if (err) throw err;
         })
 
-        await fs.writeFile(`${token}_numItems.txt`, currentItems.toString(), (err) => {
+        await fs.writeFile(path.join(__dirname, "checkpoints", `${token}_numItems.txt`), currentItems.toString(), (err) => {
           if(err) throw err;
         })
 
