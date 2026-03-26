@@ -38,6 +38,10 @@ Okay, this repo needs some help
     - and after refund we can delete all bids below target
 - [ ] Reformat the display of tx hashes and etherscan links to just have 1, in-order list of etherscan links
 
+### For db creation scanners
+- [ ] remove the need for "numitems"
+- [ ] Do reverting txs get logged? - example from cUSDC: https://etherscan.io/tx/0x0833ddd3747094ec7f602852eaa0094fb73ddfb9f0fa8b3bb4b63ecbddd40f42
+
 ### Addresses to test with 
 0xAb671e448a2c48f6355c8030621f25033e3Be899
 0xfBf13c45D7498776aAE005998B06EC2177542ff1
@@ -50,6 +54,12 @@ Okay, this repo needs some help
 - Over time we get more and more constraints. 
     - [ ] Perhaps there is a method to solve systems of equations
 - uh ohes - bid ranges will ALSO be constrained by other bids. For example, bid 1 can be full range of accts balance. Then bid 2 is accts full range - bid1 (unknown just yet)
+- We can have TWO Exports:
+    - a DB of all relevant handles, as well as their constraints, and backlinks
+        - So, handleXYZ depends on ABC and DEF - we shall make sure in the DB, that handles[XYZ].links = {ABC,DEF}, handles[ABC].links = {XYZ}, handles[DEF].links = XYZ
+    - other export should be address tracing - which shows all address actions    
+
+
 
 - Here's the cUSDT token on Ethereum
     https://etherscan.io/address/0xae0207c757aa2b4019ad96edd0092ddc63ef0c50
@@ -59,3 +69,4 @@ Okay, this repo needs some help
     - Block 24369034
 - Here's the transaction that opened "settlement" phase:
     - https://etherscan.io/tx/0xd47893a92ba2b4adcb76a11262081eda57244330ee61269a008a506ffb6de713 
+

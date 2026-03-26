@@ -53,8 +53,6 @@ This will scan the cUSDT confidential token which is live on ethereum and was us
 
 
 **Here are the other scripts you can run**
-- `add-topic-rows.js` - this will add columns to your already existing table from `scan-cUSDT.js`, for topics 1, 2 and 3 of the event emission. Topic 0 is already recorded and is the event signature - TODO: integrate these table columns into `scan-cUSDT.js`
-- `populate-topic-rows.js` - this will parse `topics_json` from your table into topics 1, 2, and 3. Basically just completes the table itself instead of letting everything stay NULL - #TODO integrate this into `scan-cUSDT.js` as well
 - `find-address.js` - this will allow you to see all transactions involving a specific address, and will provide etherscan links to them
     Try this: 
     ```

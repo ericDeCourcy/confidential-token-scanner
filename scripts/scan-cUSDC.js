@@ -2,26 +2,18 @@ const hre = require("hardhat");
 const Database = require("better-sqlite3");
 const fs = require("fs/promises");
 
-const { labelFromFuncSig } = require("./lib/cUSDT-labels");
+const { labelFromFuncSig } = require("./lib/cUSDC-labels"); //TODO make these labels
 
 
-/*
-const startBlock = 24480501;    //This is the block where the example transaction is
-const finalBlock = 24490000;
-*/
+const CHECKPOINT_FILENAME = "cUSDC_checkpoint.txt";
+const NUM_ITEMS_FILENAME = "cUSDC_numItems.txt";
+const CUSDC_ADDRESS = "0xe978F22157048E5DB8E5d07971376e86671672B2";
 
-const CHECKPOINT_FILENAME = "cUSDT_checkpoint.txt";
-const NUM_ITEMS_FILENAME = "cUSDT_numItems.txt";
-const CUSDT_ADDRESS = "0xAe0207C757Aa2B4019Ad96edD0092ddc63EF0c50";
-
-const cUSDTDeploymentBlock = 24096698;
-const startBlock = 24125000;
+const cUSDCDeploymentBlock = 24096697;
+//const startBlock = 24096697;
+const startBlock = 24127392;    //this is the first transaction that "wraps" to USDC (but, it reverts!)
 const finalBlock = 24537892;  //top block on feb 25 2026
 
-
-// cUSDT was deployed in this tx: 
-// https://etherscan.io/tx/0x2eeb06d478ab37699ab18bc2cd90248eaf67f3a05c9995808ca5e949b4d1f606
-//  block 24096698
 
 async function loadCheckpoint() {
   try {
@@ -62,7 +54,7 @@ async function main() {
 }
 
 async function addTransactions(startingBlock,numItems) {  
-    const db = new Database("cUSDT_events.db");
+    const db = new Database("cUSDC_events.db");
 
     // TODO what does `removed` mean? its a feature of the logs - maybe re-orgs?
     // TODO: is it a good idea to shrink primary keys to just be `tx_hash` and `log_index`?
@@ -124,7 +116,7 @@ async function addTransactions(startingBlock,numItems) {
           // this is in block 24480551, its an unwrap tx
         // also examples in: 24480532, 24482033, 24483005
         const logs = await provider.getLogs({
-            address: CUSDT_ADDRESS,
+            address: CUSDC_ADDRESS,
             fromBlock: currentBlock,
             toBlock: currentBlock + 9,
             topics: ["0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9"], // This is the sig for "confidentialTransfer" - TODO: check for other logs that aren't this
@@ -175,7 +167,7 @@ async function addTransactions(startingBlock,numItems) {
         insertLogsTx(rows);
 
         //records last block scanned so +9
-        await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+10).toString(), (err) => { 
+        await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+9).toString(), (err) => { 
           if (err) throw err;
         })
 
@@ -186,7 +178,7 @@ async function addTransactions(startingBlock,numItems) {
         // Increment block by 10 to do the next round 
         currentBlock += 10;
 
-         await sleep(100); //add a crude sleep function to prevent alchemy api from timing out
+        await sleep(0); //add a crude sleep function to prevent alchemy api from timing out
         //@dev this is very handy when your scanner hits the auction and reveal - lots of activity on those days.
         //    I used 3000 to fight rate-limiting from alchemy
       }
