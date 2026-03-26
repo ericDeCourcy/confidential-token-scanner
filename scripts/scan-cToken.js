@@ -2,67 +2,114 @@ const hre = require("hardhat");
 const Database = require("better-sqlite3");
 const fs = require("fs/promises");
 
-const { labelFromFuncSig } = require("./lib/cUSDT-labels");
+const { labelFromFuncSig } = require("./lib/cUSDC-labels"); //TODO make these labels
 
-
-/*
-const startBlock = 24480501;    //This is the block where the example transaction is
-const finalBlock = 24490000;
-*/
-
-const CHECKPOINT_FILENAME = "cUSDT_checkpoint.txt";
-const NUM_ITEMS_FILENAME = "cUSDT_numItems.txt";
-const CUSDT_ADDRESS = "0xAe0207C757Aa2B4019Ad96edD0092ddc63EF0c50";
-
-const cUSDTDeploymentBlock = 24096698;
-const startBlock = 24125000;
 const finalBlock = 24537892;  //top block on feb 25 2026
 
 
-// cUSDT was deployed in this tx: 
-// https://etherscan.io/tx/0x2eeb06d478ab37699ab18bc2cd90248eaf67f3a05c9995808ca5e949b4d1f606
-//  block 24096698
+function getDeploymentBlock(token)
+{
+  switch(token) {
+    case "cBRON":
+      return 24096700;
+    case "ctGBP":
+      return 24117438;
+    case "cUSDC":
+      return 24096697;
+    case "cUSDT":
+      return 24096698;
+    case "cWETH":
+      return 24096699;
+    case "cZAMA":
+      return 24096701;
+    default:
+      throw new Error(`cToken not found: ${token}`);
+  }
+}
 
-async function loadCheckpoint() {
+async function loadCheckpoint(checkpointFilename, token) {
   try {
-    const text = await fs.readFile(CHECKPOINT_FILENAME, "utf8");
+    const text = await fs.readFile(checkpointFilename, "utf8");
     console.log("reading the file");
     const parsedVal = parseInt(text, 10) + 1;
     return parsedVal;
   } catch (err) {
-    // If first run and file doesn't exist, start from startBlock
+    // If first run and file doesn't exist, start from startBlock (token deployment)
     if (err.code === "ENOENT") {
-      return startBlock;
+      return getDeploymentBlock(token);
     }
     throw err;
   }
 }
 
-async function loadNumItems() {
+async function loadNumItems(numItemsFilename) {
   try {
-    const text = await fs.readFile(NUM_ITEMS_FILENAME, "utf8");
+    const text = await fs.readFile(numItemsFilename, "utf8");
     console.log("reading the file");
     const parsedVal = parseInt(text, 10); 
     return parsedVal;
   } catch (err) {
-    // If first run and file doesn't exist, start from startBlock
+    // TODO: this is copied from loadCheckpoint, do we even need to return 0 here?
     if (err.code === "ENOENT") {
-      return startBlock;
+      return 0;
     }
     throw err;
   }
 }
 
-
-
-async function main() {
-  const checkpoint = await loadCheckpoint();
-  const numItems = await loadNumItems();
-  await addTransactions(checkpoint,numItems);
+function getArg(flag) {
+  const index = process.argv.indexOf(flag);
+  if (index === -1 || index + 1 >= process.argv.length) {
+    return null;
+  }
+  return process.argv[index + 1];
 }
 
-async function addTransactions(startingBlock,numItems) {  
-    const db = new Database("cUSDT_events.db");
+// TODO: should we also return the deployment block number here?
+function getAddressFromToken(token) {
+  switch(token) {
+    case "cBRON":
+      return "0x85dE671c3bec1aDeD752c3Cea943521181C826bc";
+    case "ctGBP":
+      return "0xa873750ccbafd5ec7dd13bfd5237d7129832edd9";
+    case "cUSDC":
+      return "0xe978F22157048E5DB8E5d07971376e86671672B2";
+    case "cUSDT":
+      return "0xAe0207C757Aa2B4019Ad96edD0092ddc63EF0c50";
+    case "cWETH":
+      return "0xda9396b82634Ea99243cE51258B6A5Ae512D4893";
+    case "cZAMA":
+      return "0x80cb147fd86dc6dee3eee7e4cee33d1397d98071";
+    default:
+      throw new Error(`cToken not found: ${token}`);
+  }
+}
+// TODO: make sure that each of the loads and writes is to a filename thats correct for this token
+// TODO: implement a lookup table where given a token name, it will find the corresponding address and use it
+// TODO: we will also need block numbers for each of the cTokens
+// TODO: we will also need a "final" block number
+
+async function main() {
+  const token = getArg("--token");
+  console.log(`token = ${token}`);  //TODO remove this line
+
+  let sleepRate = getArg("--sleep");
+  console.log(`sleep = ${sleepRate}`);
+  if(sleepRate == null)
+  {
+    sleepRate = 0;
+  }
+
+
+  const tokenAddress = getAddressFromToken(token);
+  const checkpoint = await loadCheckpoint(`${token}_checkpoint.txt`);
+  const numItems = await loadNumItems(`${token}_numItems.txt`);
+  await addTransactions(checkpoint,numItems,token,tokenAddress,sleepRate);
+}
+
+
+async function addTransactions(startingBlock,numItems,token,tokenAddress,sleepRate) {  
+    const db = new Database(`${token}_events.db`);
 
     // TODO what does `removed` mean? its a feature of the logs - maybe re-orgs?
     // TODO: is it a good idea to shrink primary keys to just be `tx_hash` and `log_index`?
@@ -124,7 +171,7 @@ async function addTransactions(startingBlock,numItems) {
           // this is in block 24480551, its an unwrap tx
         // also examples in: 24480532, 24482033, 24483005
         const logs = await provider.getLogs({
-            address: CUSDT_ADDRESS,
+            address: tokenAddress,
             fromBlock: currentBlock,
             toBlock: currentBlock + 9,
             topics: ["0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9"], // This is the sig for "confidentialTransfer" - TODO: check for other logs that aren't this
@@ -175,18 +222,18 @@ async function addTransactions(startingBlock,numItems) {
         insertLogsTx(rows);
 
         //records last block scanned so +9
-        await fs.writeFile(CHECKPOINT_FILENAME, (currentBlock+10).toString(), (err) => { 
+        await fs.writeFile(`${token}_checkpoint.txt`, (currentBlock+9).toString(), (err) => { 
           if (err) throw err;
         })
 
-        await fs.writeFile(NUM_ITEMS_FILENAME, currentItems.toString(), (err) => {
+        await fs.writeFile(`${token}_numItems.txt`, currentItems.toString(), (err) => {
           if(err) throw err;
         })
 
         // Increment block by 10 to do the next round 
         currentBlock += 10;
 
-         await sleep(100); //add a crude sleep function to prevent alchemy api from timing out
+        await sleep(sleepRate); //add a crude sleep function to prevent alchemy api from timing out
         //@dev this is very handy when your scanner hits the auction and reveal - lots of activity on those days.
         //    I used 3000 to fight rate-limiting from alchemy
       }
@@ -196,7 +243,7 @@ async function addTransactions(startingBlock,numItems) {
       await db.close();
       console.log("closed db");
 
-      console.log(`checkpoint block = ${currentBlock+5}`);
+      console.log(`checkpoint block = ${currentBlock+9}`);
       console.log(`count of db items = ${currentItems}`);
       console.log(`\nPress CTRL+C`);  //TODO idk why this needs to be pressed again
     }

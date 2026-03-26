@@ -45,10 +45,21 @@ module.exports = {
 Run this command in the root directory:
 
 ```
-$ npx hardhat run scripts/scan-cUSDT.js --network ethereum
+$ node scripts/scan-cToken.js --token cUSDT --sleep 1000
+
 ```
 
 This will scan the cUSDT confidential token which is live on ethereum and was used for the $ZAMA token auction.
+
+`--sleep` will determine the time between API queries, which is useful to avoid rate limiting, especially in the case of USDT around the time of the ZAMA auction. It is an optional parameter. It is specified in milliseconds.
+
+`--token` is a mandatory parameter. It has the following options:
+- `cBRON`
+- `ctGBP`
+- `cUSDC`
+- `cUSDT`
+- `cWETH`
+- `cZAMA`
 
 
 
