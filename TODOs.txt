@@ -21,6 +21,7 @@ Okay, this repo needs some help
         - 0x0 for mint/burn
         - $use
 - [ ] Remove the cUSDT_numItems.txt from git tracking
+- [ ] What is the deal with "multisends.txt"?
 
 ### For Analyze addresses
 - [ ] Reformat the "action" strings and such so that they are all neat - ensure they display bid ids and store that

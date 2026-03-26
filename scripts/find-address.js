@@ -53,7 +53,7 @@ function main() {
     process.exit(1);
   }
 
-  const db = new Database("events.db", { readonly: true });
+  const db = new Database("cUSDT_events.db", { readonly: true });
 
   try {
     // Pull only the columns we need.

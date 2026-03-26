@@ -3,7 +3,7 @@ const Database = require("better-sqlite3");
 
 function main() {
 
-    const db = new Database("events.db", {readonly: true});
+    const db = new Database("cUSDT_events.db", {readonly: true});
 
     const stmt = db.prepare(`
     SELECT DISTINCT

@@ -72,7 +72,7 @@ There are a few things you can reconfigure
 - The token contract address
 - The block range to scan. Alchemy used to limit queries to 500 block ranges, but now its limited down to 10
 
-A simple way to reconfigure this is a #TODO item
+#TODO setup a simple re-configuration mechanism
 
 ### Discoveries
 

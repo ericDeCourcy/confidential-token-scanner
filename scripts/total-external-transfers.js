@@ -58,7 +58,7 @@ async function main() {
 
     
     // open db
-    const db = new Database("events.db", { readonly: true });
+    const db = new Database("cUSDT_events.db", { readonly: true });
 
     try {
     // topic1 and topic2 are sender and receiver

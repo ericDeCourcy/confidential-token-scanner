@@ -16,6 +16,7 @@ const Database = require("better-sqlite3");
 
 const claimingPhaseBlock = 24369034;  //This is the block where we entered the claiming phase. After this block, we can do refunds. 
   // TODO: we may need to check that there aren't more bid submissions right before this or something. Like, within the same block
+    // This should be simple enough, we only have to check the TXs that are in one block
 
 
 function normalizeHex0x(s) {
@@ -67,7 +68,7 @@ async function main() {
     process.exit(1);
   }
 
-  const db = new Database("events.db", { readonly: true });
+  const db = new Database("cUSDT_events.db", { readonly: true });
 
   try {
     // Pull only the columns we need.
