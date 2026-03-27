@@ -6,7 +6,8 @@ const path = require("path");
 
 const { labelFromFuncSig } = require("./lib/cUSDC-labels"); //TODO make these labels
 
-const finalBlock = 24537892;  //top block on feb 25 2026
+const finalBlock = 24537892;  //top block on feb 25 2026 - default block for this project
+// TODO consider using: 24700000; - easier to check if done - march 20 2026 - https://etherscan.io/block/24700000
 
 
 function getDeploymentBlock(token)
@@ -33,7 +34,7 @@ async function loadCheckpoint(checkpointFilename, token) {
   try {
     const text = await fs.readFile(checkpointFilename, "utf8");
     console.log("reading the file");
-    const parsedVal = parseInt(text, 10) + 1;
+    const parsedVal = parseInt(text, 10);
     return parsedVal;
   } catch (err) {
     // If first run and file doesn't exist, start from startBlock (token deployment)
@@ -44,6 +45,7 @@ async function loadCheckpoint(checkpointFilename, token) {
   }
 }
 
+// TODO: get rid of numItems
 async function loadNumItems(numItemsFilename) {
   try {
     const text = await fs.readFile(numItemsFilename, "utf8");
@@ -102,16 +104,29 @@ async function main() {
     sleepRate = 0;
   }
 
+  let endBlock = getArg("--endBlock");
+  if(endBlock == null || endBlock == 0)
+  {
+    endBlock = finalBlock;
+  }
 
+  
   const tokenAddress = getAddressFromToken(token);
-  const checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `${token}_checkpoint.txt`));
+  let checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `${token}_checkpoint.txt`));
   const numItems = await loadNumItems(path.join(__dirname, "checkpoints", `${token}_numItems.txt`));
 
-  await addTransactions(checkpoint,numItems,token,tokenAddress,sleepRate);
+  let startBlock = getArg("--startBlock");
+  if(startBlock == null)
+  {
+    checkpoint = startBlock;
+  }
+
+
+  await addTransactions(checkpoint,endBlock,numItems,token,tokenAddress,sleepRate);
 }
 
 
-async function addTransactions(startingBlock,numItems,token,tokenAddress,sleepRate) {  
+async function addTransactions(startingBlock,endBlock,numItems,token,tokenAddress,sleepRate) {  
     const db = new Database(`${token}_events.db`);
 
     // TODO what does `removed` mean? its a feature of the logs - maybe re-orgs?
@@ -161,12 +176,13 @@ async function addTransactions(startingBlock,numItems,token,tokenAddress,sleepRa
     let currentItems = numItems;
     let currentBlock = startingBlock;
     
-    console.log(`currentBlock: ${currentBlock} --- finalBlock: ${finalBlock} --- difference: ${finalBlock - currentBlock}`);
+    console.log(`currentBlock: ${currentBlock} --- finalBlock: ${endBlock} --- difference: ${endBlock - currentBlock}`);
 
+    sleep(1500);
 
     try 
     {
-      while(currentBlock < finalBlock && !shuttingDown)
+      while(currentBlock < endBlock && !shuttingDown)
       {
         console.log(`scanning blocks ${currentBlock} to ${currentBlock + 9}`);
 
