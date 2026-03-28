@@ -18,6 +18,25 @@ const claimingPhaseBlock = 24369034;  //This is the block where we entered the c
   // TODO: we may need to check that there aren't more bid submissions right before this or something. Like, within the same block
     // This should be simple enough, we only have to check the TXs that are in one block
 
+function getDecimalDivisor(cToken)
+{
+  switch(cToken) {
+    case "cBRON":
+      return 1000000000000000000;
+    case "ctGBP":
+      return 1000000000000000000;
+    case "cUSDC":
+      return 1000000;
+    case "cUSDT":
+      return 1000000;
+    case "cWETH":
+      return 1000000000000000000;
+    case "cZAMA":
+      return 1000000000000000000;
+    default:
+      throw new Error(`cToken not found: ${token}`);
+  }
+}
 
 function normalizeHex0x(s) {
   if (!s) return null;
@@ -41,9 +60,27 @@ function addressToTopic32(addr) {
 }
 
 async function main() {
-  const input = process.argv[2];
-  if (!input) {
-    console.error("Usage: node find-address.js <0xAddress>");
+  //TODO make input fetching more similar to how it is in scan-cToken.js
+  const inputAddress = process.argv[2];
+  if (!inputAddress) {
+    console.error("Usage: node find-address.js <0xAddress> <cToken>");
+    process.exit(1);
+  }
+
+  const cToken = process.argv[3];
+  if (!cToken) {
+    console.error("Usage: node find-address.js <0xAddress> <cToken>");
+    process.exit(1);
+  }
+  if (cToken != "cBRON" &&
+      cToken != "ctGBP" && 
+      cToken != "cUSDC" &&
+      cToken != "cUSDT" &&
+      cToken != "cWETH" &&
+      cToken != "cZAMA" )
+  {
+    console.error(`Invalid cToken: ${cToken}`);
+    console.error("Usage: node find-address.js <0xAddress> <cToken>");
     process.exit(1);
   }
 
@@ -56,7 +93,7 @@ async function main() {
   }
 
 
-  const norm = normalizeHex0x(input);
+  const norm = normalizeHex0x(inputAddress);
 
   let targetTopic;
   if (isAddress(norm)) {
@@ -68,7 +105,7 @@ async function main() {
     process.exit(1);
   }
 
-  const db = new Database("cUSDT_events.db", { readonly: true });
+  const db = new Database(`${cToken}_events.db`, { readonly: true });
 
   try {
     // Pull only the columns we need.
@@ -119,14 +156,14 @@ async function main() {
 
     console.log("\nADDRESS ACTIONS:\n")
 
-    analyzeActions(out, db, targetTopic);
+    analyzeActions(out, db, targetTopic, cToken);
 
   } finally {
     db.close();
   }
 }
 
-async function analyzeActions(txs, db, targetTopic)
+async function analyzeActions(txs, db, targetTopic, cToken)
 {
     const provider = hre.ethers.provider; 
 
@@ -240,7 +277,7 @@ async function analyzeActions(txs, db, targetTopic)
           }
           else
           {
-            actionString = ` ⬇️  LOW BID AT ${bidPrice}`;
+            actionString = ` ⬇️  LOW BID AT ${bidPrice} (THIS BID WILL BE REFUNDED)`;
 
             const lowBidsMaxNumber = rangeHigh / bidPrice; //max number of high bids at price x
             lowBidsMax += lowBidsMaxNumber*bidPrice;
@@ -463,12 +500,50 @@ async function analyzeActions(txs, db, targetTopic)
           break;
         }
 
+        case "conf_transfer_w_proof":
+        {
+          // figure out if recipient or sender
+          const receipt = await provider.getTransactionReceipt(txHash);
+          const targetTopicFormatted = String(`0x${targetTopic.slice(-40)}`);
+          const receiptFormatted = String(receipt.from);
+
+          if(targetTopicFormatted == receiptFormatted)
+          {
+            console.log("is sender");
+
+            // TODO: implement a bidlike structure here to handle TRANSFERRED_AMOUNTS
+          }  
+          else
+          {
+            const tx = await provider.getTransaction(txHash);
+            txRecipient = String(`0x${tx.data.slice(34,74)}`);          
+            
+            if(txRecipient == targetTopicFormatted)
+            {
+              console.log("is recipient");
+
+              // TODO: implement a bidlike structure here to handle TRANSFERRED_AMOUNTS
+            }
+            else
+            {
+              console.log(`🚨 account not sender or recipient 🚨`);
+            }
+          
+            // targetTopic can be used to match "to" and from can be "from"
+          }
+
+          break;
+        }
+
         default: { console.log(`🚨 UNKNOWN ACTION - this label (${label}) has not yet been accounted for! 🚨`); }
       }
 
-      rangeLowDecimals = Number(rangeLow) / 1000000;
-      rangeHighDecimals = Number(rangeHigh) / 1000000;
+      
 
+      rangeLowDecimals = Number(rangeLow) / getDecimalDivisor(cToken);
+      rangeHighDecimals = Number(rangeHigh) / getDecimalDivisor(cToken);
+
+      // TODO: consider changing to bids and transfer string
       // Construct the bids string
       bidString = "";
 
@@ -490,11 +565,10 @@ async function analyzeActions(txs, db, targetTopic)
 
       if(rangeHigh == rangeLow)
       {
-        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}}`+bidString);
+        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}}`+bidString);   //TODO: does bidString need to exist here? If so, document why
       }
       else
       {
-        //console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}, ${rangeHighDecimals}}`+bidString);
         console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}, ${rangeHighString}}`);
       }
 

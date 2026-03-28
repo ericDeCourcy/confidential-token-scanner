@@ -95,10 +95,7 @@ function getAddressFromToken(token) {
 
 async function main() {
   const token = getArg("--token");
-  console.log(`token = ${token}`);  //TODO remove this line
-
   let sleepRate = getArg("--sleep");
-  console.log(`sleep = ${sleepRate}`);
   if(sleepRate == null)
   {
     sleepRate = 0;
@@ -112,11 +109,11 @@ async function main() {
 
   
   const tokenAddress = getAddressFromToken(token);
-  let checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `${token}_checkpoint.txt`));
+  let checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `${token}_checkpoint.txt`), token);
   const numItems = await loadNumItems(path.join(__dirname, "checkpoints", `${token}_numItems.txt`));
 
   let startBlock = getArg("--startBlock");
-  if(startBlock == null)
+  if(startBlock != null)
   {
     checkpoint = startBlock;
   }
@@ -174,7 +171,7 @@ async function addTransactions(startingBlock,endBlock,numItems,token,tokenAddres
     const provider = hre.ethers.provider; 
 
     let currentItems = numItems;
-    let currentBlock = startingBlock;
+    let currentBlock = Number(startingBlock);
     
     console.log(`currentBlock: ${currentBlock} --- finalBlock: ${endBlock} --- difference: ${endBlock - currentBlock}`);
 
@@ -194,6 +191,7 @@ async function addTransactions(startingBlock,endBlock,numItems,token,tokenAddres
             fromBlock: currentBlock,
             toBlock: currentBlock + 9,
             topics: ["0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9"], // This is the sig for "confidentialTransfer" - TODO: check for other logs that aren't this
+              // TODO: we need to check for finalizeUnwrap transactions as well - these are sort of covered by "unwrap" calls already
           });
 
         for (const log of logs) {

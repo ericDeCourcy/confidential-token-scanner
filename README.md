@@ -40,7 +40,7 @@ module.exports = {
     ethereum: {   //make sure this is configured with your api key
 ```
 
-### Running
+### Scanning tokens
 
 Run this command in the root directory:
 
@@ -66,13 +66,15 @@ This will scan the cUSDT confidential token which is live on ethereum and was us
 
 `--startBlock` will override loading from the checkpoint, and instead load from some block
 
-**Here are the other scripts you can run**
+### See all transactions for an address
 - `find-address.js` - this will allow you to see all transactions involving a specific address, and will provide etherscan links to them
     Try this: 
     ```
     node scripts/find-address.js 0x3a292b57e41d88309201f2df9cf46230c58008e0
     ```
-- `node scripts/totalExternalTransfers.js` - This will total up all "exotic" transfers - not involving the auction contracts or the wrapper. It will list the most transferred-with contracts first, then remove all of those which are auction related. Finally it totals the transfers which came from what seems to be "confidential transfer" calls. See **Discoveries** about this
+
+### See "interesting" transfers
+- `node scripts/totalExternalTransfers.js` - This will total up all "interesting" transfers, which are any not involving the auction contracts or the cToken wrapper. It will list the most active addresses first, then remove all of those which are auction related. Finally it totals the transfers which came from what seems to be "confidential transfer" calls. See **Discoveries** about this
 
 ### Ouput
 
@@ -90,7 +92,7 @@ There are a few things you can reconfigure
 
 ### Discoveries
 
-#### 0.2% (95 of 47000) of transfers are to non-zama contracts
+#### 0.2% (95 of 47000) of cUSDC transfers are to non-zama contracts
 - This means the majority are just interacting with the auction contract, which is NOW traceable. 
   - The auction contract was NOT traceable at the time of the auction - the privacy function of the auction was to hide the settlement price. But the settlement price was revealed and used for all bidders.
 - Out of rougly 47k transfers recorded, only about 100 of them were to addresses that weren't the wrapper or auction contracts.
@@ -130,7 +132,7 @@ https://etherscan.io/address/0x255cdddbec2c76b2f409248abeea49c1b1c6bf18 2
 
 You wanna run this for yourself??? Huh?? Do ya?
 
-You'll need a events.db for this
+You'll need a `events.db` for this
 
 run:
 ```
