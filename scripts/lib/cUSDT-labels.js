@@ -6,6 +6,7 @@ function labelFromFuncSig(funcSig) {
         case "0x1fad948c": return "HANDLE_OPS"; // pretty sure call from smart wallet
         case "0x2fb74e62": return "CONF_TRANSFER_W_PROOF";
         case "0x5bebed7e": return "CONF_TRANSFER";
+        case "0x5bb67a05": return "FINALIZE_UNWRAP";
         case "0x5bf4ef06": return "UNWRAP_W_PROOF"; 
         case "0x6a761202": return "GNOSIS_EXEC";  //Call from a gnosis safe
         case "0x6db28804": return "FINALIZE_REFUND";  // TODO What does this do?

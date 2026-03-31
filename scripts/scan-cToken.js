@@ -94,7 +94,7 @@ function getAddressFromToken(token) {
 // TODO: we will also need a "final" block number
 
 async function main() {
-  const token = getArg("--token");
+  const token = getArg("--token");  //TODO remove this because token is always needed. Also setup default to scan cUSDT
   let sleepRate = getArg("--sleep");
   if(sleepRate == null)
   {
@@ -190,8 +190,15 @@ async function addTransactions(startingBlock,endBlock,numItems,token,tokenAddres
             address: tokenAddress,
             fromBlock: currentBlock,
             toBlock: currentBlock + 9,
-            topics: ["0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9"], // This is the sig for "confidentialTransfer" - TODO: check for other logs that aren't this
+            topics: [
+                      ["0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9",
+                       "0x2d4edf3c2943002120f53dab3f8940043f34799f4a92ab90f2f81f7dd004a49e"]
+                    ], 
+            // This is the sig for "confidentialTransfer" - TODO: check for other logs that aren't this
               // TODO: we need to check for finalizeUnwrap transactions as well - these are sort of covered by "unwrap" calls already
+              // TODO: unwrapRequested would be a good event to scan for, accompanies the confidentialTransfer event tho
+                // ex: https://etherscan.io/tx/0x3e1246ada889f12d7269b69dcd7c1b619ca14396da32ac22cd34b29ed680e30c#eventlog
+              
           });
 
         for (const log of logs) {

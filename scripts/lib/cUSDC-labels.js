@@ -1,4 +1,5 @@
-// cUSDT labels
+// cUSDC labels
+// TODO: resolve this - i don't think i need token-separate labels. There are currently two identical files (this and cUST-labels.js)
 
 
 function labelFromFuncSig(funcSig) {

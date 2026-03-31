@@ -168,6 +168,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
     const provider = hre.ethers.provider; 
 
     const bids = new Map;
+    const transfers = new Map;
 
     let rangeHigh =0n;
     let rangeLow =0n;
@@ -357,7 +358,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
 
             const receipt = await provider.getTransactionReceipt(txHash);
             const zamaDisbursed = BigInt(getZamaDisbursedFromReceipt(receipt, scannedAddress));
-            const usdtPaid = Number(zamaDisbursed / BigInt(1000000000000000000)) * 50000;
+            const usdtPaid = Number(zamaDisbursed / BigInt(1000000000000000000)) * 50000; //TODO: make sure decimals are correct and this won't hit for every token
             const usdtPaidDecimals = usdtPaid / 1000000;
             actionString = `\n\tUSDT PAID TOTAL: ${usdtPaidDecimals} for ${Number(zamaDisbursed / BigInt(1000000000000000000))} ZAMA`; 
   
@@ -437,12 +438,15 @@ async function analyzeActions(txs, db, targetTopic, cToken)
           // go and find the number of USDT tokens transferred out
 
           const receipt = await provider.getTransactionReceipt(txHash);
-          const unwrappedAmount = BigInt(getUnwrappedAmountFromReceipt(receipt));
-          const unwrappedDecimals = Number(unwrappedAmount) / 1000000;
+          const unwrappedAmount = getUnwrappedAmountFromReceipt(receipt, cToken);
 
-          label = label + ` (${unwrappedDecimals} USDT)`;
+          const unwrappedDecimals = Number(unwrappedAmount) / getDecimalDivisor(cToken);  //TODO fix decimals they seem broke here
+
+          label = label + ` (${unwrappedDecimals})`;
 
           // TODO: based on bids which hit and which did not hit, we can use this to guess about an account's state
+            // what? I think this comment may have been copied from somewhere
+
 
           // An unwrap should always precede this,
           //  if the unwrap is a "full" unwrap, the balance will already be zero and we can skip this
@@ -452,26 +456,13 @@ async function analyzeActions(txs, db, targetTopic, cToken)
             if(rangeHigh >= unwrappedAmount)
             {
               rangeHigh -= unwrappedAmount;
+              rangeLow -= unwrappedAmount;
             }
             else
             {
               console.log("🚨 UH OH! Somehow we have unwrapped more than the max balance");
             }
-          }
-          
-
-
-          // if rangeHighDecimals - unwrapped > bidSize for any bid, lower that bid size
-          // TODO: this doesn't work because we reduce range in the "unwrap" phase, not "finalize unwrap". We end up with negative numbers if we use this
-          /*
-          for (const key of bids.keys()) {
-            if(bids.get(key).maxPaidForBid > rangeHigh)
-            {
-              bids.get(key).maxPaidForBid = rangeHigh;
-            }
-          }
-          */
-          
+          }       
 
           break;
         }
@@ -504,36 +495,34 @@ async function analyzeActions(txs, db, targetTopic, cToken)
         {
           // figure out if recipient or sender
           const receipt = await provider.getTransactionReceipt(txHash);
-          const targetTopicFormatted = String(`0x${targetTopic.slice(-40)}`);
-          const receiptFormatted = String(receipt.from);
+          const targetTopicFormatted = (String(`0x${targetTopic.slice(-40)}`)).toUpperCase();;
+          const receiptFormatted = (String(receipt.from)).toUpperCase();
+          const transferId = (txHash.slice(2,10)).toUpperCase();  //first 4 bytes of txHash is the transfer ID
+          const tx = await provider.getTransaction(txHash);
+          txRecipient = (String(`0x${tx.data.slice(34,74)}`)).toUpperCase();    
 
-          if(targetTopicFormatted == receiptFormatted)
+          if(targetTopicFormatted == receiptFormatted)  //account is transfer sender
           {
-            console.log("is sender");
-
-            // TODO: implement a bidlike structure here to handle TRANSFERRED_AMOUNTS
+            transfers.set(transferId, "out");
+            actionString = ` - TRANSFER TO ${txRecipient}`;
           }  
           else
           {
-            const tx = await provider.getTransaction(txHash);
-            txRecipient = String(`0x${tx.data.slice(34,74)}`);          
-            
-            if(txRecipient == targetTopicFormatted)
+            if(txRecipient == targetTopicFormatted)   //account is transfer reciever
             {
-              console.log("is recipient");
-
-              // TODO: implement a bidlike structure here to handle TRANSFERRED_AMOUNTS
+              transfers.set(transferId, "in");
+              actionString = ` - TRANSFER FROM ${receiptFormatted}`;
             }
             else
             {
               console.log(`🚨 account not sender or recipient 🚨`);
-            }
-          
-            // targetTopic can be used to match "to" and from can be "from"
+            }          
           }
 
           break;
         }
+
+        // TODO: case confidential_transfser (no proof)
 
         default: { console.log(`🚨 UNKNOWN ACTION - this label (${label}) has not yet been accounted for! 🚨`); }
       }
@@ -563,20 +552,52 @@ async function analyzeActions(txs, db, targetTopic, cToken)
         }
       }
 
-      if(rangeHigh == rangeLow)
+      // This definition is needed because transfers affect range low. Bids don't
+      let rangeLowString = String(rangeLowDecimals);
+
+      // TODO accomodate transfers when building strings
+      if(transfers.size > 0)
       {
-        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}}`+bidString);   //TODO: does bidString need to exist here? If so, document why
+        for(const [key,value] of transfers)
+        {
+          if(value == "in")
+          {
+            //transfer going in, affects both the rangeHigh and rangeLow
+            // TODO: finish this... actually affect range high and low
+
+            rangeHighString = rangeHighString + ` + TX_${key}`;
+            rangeLowString = rangeLowString + ` + TX_${key}`;
+          }
+          else       
+          {
+            //transfer going out, affects both the rangeLow and rangeHigh
+            if(value == "out")
+            {
+              rangeHighString = rangeHighString + ` - TX_${key}`;
+              rangeLowString = rangeLowString + ` - TX_${key}`;
+            }
+            else
+            {
+              console.log(`🚨 UNKNOWN TRANSFER TYPE - transfer is not set as "out" or "in" 🚨`);
+            }
+          }
+        }
+      }
+
+      if(rangeHigh == rangeLow) //TODO: in all cases will this still work? i feel like we need to check more than just range high and range low
+      {
+        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowString}}`+bidString);   //TODO: does bidString need to exist here? If so, document why
       }
       else
       {
-        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowDecimals}, ${rangeHighString}}`);
+        console.log(`${blockNumber}:${label.toUpperCase()}${actionString}\n\tBalance = {${rangeLowString}, ${rangeHighString}}`);
       }
 
       if(bids.size > 0)
       {
         for(const [key,value] of bids)
           {
-            valueDecimals = Number(value.maxPaidForBid)/1000000;
+            valueDecimals = Number(value.maxPaidForBid)/getDecimalDivisor(cToken); 
             console.log(`\tBID_${key}: {0, ${valueDecimals}} @Price: ${value.bidPrice}`);
           }
       }
@@ -614,15 +635,33 @@ function getTopic1FromReceipt(receipt) {
   return null;
 }
 
-function getUnwrappedAmountFromReceipt(receipt) {
+function getUnwrappedAmountFromReceipt(receipt, cToken) {
   
+  // using the tx receipt, find the "finalize unwap" log and slice out the amount unwrapped
+
   const unwrapFinalizedTopic = "0x2d4edf3c2943002120f53dab3f8940043f34799f4a92ab90f2f81f7dd004a49e";
   
+  let rawAmount;
+
   for(const log of receipt.logs) {
     if(log.data && log.topics[0] === unwrapFinalizedTopic) {
-      return ("0x" + log.data.slice(-64)) ?? null;
+      rawAmount = ("0x" + log.data.slice(-64)) ?? null;
     }
   }
+
+  let divisor = 1;
+  let multiplier = 1;
+
+  switch(cToken)
+  {
+    case "ctGBP":
+      multiplier = 1000000000000; // 12 zeroes
+  }
+
+  // Because cTokens have a different number of decimals "internally" than their underlying, we need to convert decimals
+  // for example, in the "unwrap finalized" event emission for ctGBP, it will use 6 decimals, while tGBP uses 18 decimals
+  return BigInt(rawAmount) * BigInt(multiplier) / BigInt(divisor);
+
 }
 
 function getZamaDisbursedFromReceipt(receipt, address) {
