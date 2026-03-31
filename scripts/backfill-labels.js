@@ -17,7 +17,8 @@ const Database = require("better-sqlite3");
 
 
 function main() {
-  const db = new Database("ctGBP_events.db");
+    // TODO: this needs user input for token
+  const db = new Database("cUSDT_events.db");
 
   try {
     db.exec(`PRAGMA journal_mode = WAL;`);
@@ -28,7 +29,7 @@ function main() {
     const selectMissing = db.prepare(`
       SELECT chain_id, block_number, tx_hash, log_index, func_sig
       FROM contract_logs
-      WHERE label IS NULL
+      WHERE label IS NULL OR label = '???'
     `);
 
     const updateLabel = db.prepare(`
@@ -38,7 +39,7 @@ function main() {
         AND block_number = @block_number
         AND tx_hash = @tx_hash
         AND log_index = @log_index
-        AND label IS NULL
+        AND (label IS NULL OR label = '???') 
     `);
 
     const rows = selectMissing.all();

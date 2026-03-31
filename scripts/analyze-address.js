@@ -105,9 +105,11 @@ async function main() {
     process.exit(1);
   }
 
-  if(targetTopic == "0x000000000000000000000000056f0498268a497d66ab2843c8bb8edebb01608e")
+  if(targetTopic == "0x000000000000000000000000056f0498268a497d66ab2843c8bb8edebb01608e"
+    || targetTopic == "0x0000000000000000000000001a1dc272a0f894e4a0574ce9c88a9eadcf46aa40"
+  )
   {
-    console.error("The input address (0x056f0498268a497d66ab2843c8bb8edebb01608e) is the Zama Deployer. Scanning this will take a long time due to many transactions");
+    console.error(`The input address ${targetTopic} is a reserved address. Analyzing this will take a long time due to many transactions`);
     process.exit(1);
   } 
 
@@ -145,7 +147,7 @@ async function main() {
       const hasMatch = topics.some((t) => typeof t === "string" && t.toLowerCase() === targetTopic);
       if (hasMatch) {
         matchedRows++;
-        txs.add((`${row.block_number} : ${row.tx_hash} : ${row.label}` || "").toLowerCase());
+        txs.add((`${row.block_number} : ${row.tx_hash.slice(0,6)}...${row.tx_hash.slice(-4)} : https://etherscan.io/tx/${row.tx_hash} : ${row.label}` || "").toLowerCase());
         hashes.add((row.tx_hash || "").toLowerCase());
       }
     }
@@ -156,10 +158,14 @@ async function main() {
     console.log(`Rows matched: ${matchedRows}`);
     console.log(`Unique tx_hash matched: ${out.length}\n`);
 
-    for (const tx of out) console.log(tx);
+    for (const tx of out) 
+    {
+      console.log(tx);
+    }
+    /*
     console.log("Nice etherscan links:");
     for (const hash of hashes) console.log(`https://etherscan.io/tx/${hash}`);
-
+*/
     console.log("\nADDRESS ACTIONS:\n")
 
     analyzeActions(out, db, targetTopic, cToken);
@@ -201,10 +207,13 @@ async function analyzeActions(txs, db, targetTopic, cToken)
     for (const tx of txs) 
     {
 
-      const [blockStr, txHashStr, labelStr] = tx.split(":").map(s => s.trim());
+      const [blockStr, /*txHashStr*/, , etherscanLinkStr, labelStr] = tx.split(":").map(s => s.trim());
+
+      // TODO: This is dumb. I could make this much simpler if i just passed the tx hash, but NOOOO
+
 
       const blockNumber = Number(blockStr);
-      const txHash = txHashStr;
+      const txHash = etherscanLinkStr.slice(18,); /*txHashStr;*/
       let label = labelStr;
 
       actionString = "";
@@ -389,7 +398,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
 
         case "refund_user":
         {
-          // TODO: go through and delete all bids that apply to the user
+          // TODO: go through and delete all low-bids that apply to the user
 
           break;
         }

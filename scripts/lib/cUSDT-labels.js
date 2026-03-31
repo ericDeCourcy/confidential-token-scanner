@@ -13,6 +13,7 @@ function labelFromFuncSig(funcSig) {
         case "0x72b38ab9": return "REFUND_USER";    //From zama auction
         case "0x765e827f": return "HANLDE_OPS"; //TODO not sure what this does - looks like some acct abstration thing
         case "0x82ad56cb": return "AGGREGATE_MULTICALL"; //TODO what is this doing? Looks like one contract made a lot of these
+        case "0x9703ef35": return "CANCEL_BID";
         case "0xb191ca8a": return "???"; //Contract not labelled
         case "0xb780c362": return "EIP-7702-BATCH";
         case "0xbf376c7a": return "WRAP";
