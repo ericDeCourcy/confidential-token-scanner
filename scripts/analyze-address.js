@@ -105,6 +105,12 @@ async function main() {
     process.exit(1);
   }
 
+  if(targetTopic == "0x000000000000000000000000056f0498268a497d66ab2843c8bb8edebb01608e")
+  {
+    console.error("The input address (0x056f0498268a497d66ab2843c8bb8edebb01608e) is the Zama Deployer. Scanning this will take a long time due to many transactions");
+    process.exit(1);
+  } 
+
   const db = new Database(`${cToken}_events.db`, { readonly: true });
 
   try {
@@ -173,7 +179,6 @@ async function analyzeActions(txs, db, targetTopic, cToken)
     let rangeHigh =0n;
     let rangeLow =0n;
     let bidPrice =0n; //TODO change this to array, possibly with block numbers too 
-    let maxRefund =0n;
     let rangeHighBeforeRefund=0n; //TODO implement this better
       // We can imagine range high, after bidding, as "actual balance range high + committedBid"
       // This stores the total when a bid is placed, and then when the bid is released, we know we don't have to increase range high
@@ -256,7 +261,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
           bidPrice = BigInt("0x" + thisTx.data.slice(10,74));
           let maxPaidForBid = 0; 
 
-          if(bidPrice > 50000)
+          if(bidPrice > 50000)  //High bid, will hit
           {
             // right now, if bidding under the settlement price then we can just assume they never recieved tokens for their bid, and the refund will be the full amount
             actionString = ` ⬆️ HIGH BID AT ${bidPrice}`;
@@ -268,7 +273,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
             // TODO implement a checker for zama token transfers from the auction
 
           }
-          else if(bidPrice == 50000)
+          else if(bidPrice == 50000)  //on-target bid, will be filled partially
           {
             actionString = ` 🎯  TARGET BID AT ${bidPrice}`;
 
@@ -276,7 +281,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
             targetBidsMax += targetBidsMaxNumber*bidPrice;
             maxPaidForBid = targetBidsMaxNumber*bidPrice;
           }
-          else
+          else // low bid, will be refunded
           {
             actionString = ` ⬇️  LOW BID AT ${bidPrice} (THIS BID WILL BE REFUNDED)`;
 
@@ -287,7 +292,6 @@ async function analyzeActions(txs, db, targetTopic, cToken)
 
           // decrease rangeLow down to the modulo of this value vs rangeHigh
           const newRangeLow = rangeHigh % bidPrice;
-          maxRefund = rangeHigh - newRangeLow;
           rangeHighBeforeRefund = rangeHigh;
           
 
@@ -385,16 +389,6 @@ async function analyzeActions(txs, db, targetTopic, cToken)
 
         case "refund_user":
         {
-          //TODO: in this flow its pretty common that the bid is refunded 
-          //increase range high by max refund
-          //rangeHigh += maxRefund;
-
-          //rangeHigh = rangeHighBeforeRefund;
-          //rangeHighBeforeRefund = 0n;
-
-          // reset maxRefund
-//          maxRefund = 0n;
-
           // TODO: go through and delete all bids that apply to the user
 
           break;
@@ -519,6 +513,12 @@ async function analyzeActions(txs, db, targetTopic, cToken)
             }          
           }
 
+          break;
+        }
+
+        case "unwrap_w_proof":
+        {
+          // TODO: reconsider - is anything needed here?
           break;
         }
 
