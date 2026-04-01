@@ -4,8 +4,7 @@ const fs = require("fs/promises");
 const path = require("path");
 
 
-const { labelFromFuncSig } = require("./lib/cUSDC-labels"); //TODO make these labels
-
+const { labelFromFuncSig } = require("./lib/funcSig-labels"); 
 const finalBlock = 24537892;  //top block on feb 25 2026 - default block for this project
 // TODO consider using: 24700000; - easier to check if done - march 20 2026 - https://etherscan.io/block/24700000
 

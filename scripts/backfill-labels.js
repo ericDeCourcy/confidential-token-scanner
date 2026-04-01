@@ -12,7 +12,7 @@
  * - Optional: also fill empty-string labels if you want (see WHERE clause).
  */
 
-const { labelFromFuncSig } = require("./lib/cUSDT-labels");
+const { labelFromFuncSig } = require("./lib/funcSig-labels");
 const Database = require("better-sqlite3");
 
 

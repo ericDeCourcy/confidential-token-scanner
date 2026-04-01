@@ -60,6 +60,9 @@ Okay, this repo needs some help
         - So, handleXYZ depends on ABC and DEF - we shall make sure in the DB, that handles[XYZ].links = {ABC,DEF}, handles[ABC].links = {XYZ}, handles[DEF].links = XYZ
     - other export should be address tracing - which shows all address actions    
 
+### Bugs
+- ctGBP displays with 12 decimal places shifted in analyze-addresses.js
+
 
 
 - Here's the cUSDT token on Ethereum
