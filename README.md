@@ -84,7 +84,7 @@ Here is an example output from running `analyze-addresses.js` for address `0x9B9
 $ node scripts/analyze-address.js 0x9B98D08671E6F40cE7a4b4E4bf39b8D2538bA47F cUSDT
 ```
 
-![Scanner output](./images/output.png)
+![Scanner output](./images/analyze-address-output.png)
 
 
 ### Reconfiguration
