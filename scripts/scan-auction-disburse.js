@@ -53,7 +53,7 @@ async function main() {
 }
 
 async function addTransactions(startingBlock,numItems) {  
-    const db = new Database("cUSDT_events.db");
+    const db = new Database("cUSDT_events.db"); //TODO probs need to update this to accept the token param
 
     // TODO what does `removed` mean? its a feature of the logs - maybe re-orgs?
     // TODO: is it a good idea to shrink primary keys to just be `tx_hash` and `log_index`?

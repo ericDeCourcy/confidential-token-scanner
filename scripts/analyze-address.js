@@ -105,9 +105,10 @@ async function main() {
     process.exit(1);
   }
 
-  if(targetTopic == "0x000000000000000000000000056f0498268a497d66ab2843c8bb8edebb01608e"
-    || targetTopic == "0x0000000000000000000000001a1dc272a0f894e4a0574ce9c88a9eadcf46aa40"
-    || targetTopic == "0x00000000000000000000000070980569Ebd236F557211a8bC20c0b5845034502"
+  if(  targetTopic.toUpperCase() == "0x000000000000000000000000056f0498268a497d66ab2843c8bb8edebb01608e".toUpperCase()
+    || targetTopic.toUpperCase() == "0x0000000000000000000000001a1dc272a0f894e4a0574ce9c88a9eadcf46aa40".toUpperCase()
+    || targetTopic.toUpperCase() == "0x00000000000000000000000070980569Ebd236F557211a8bC20c0b5845034502".toUpperCase()
+    || targetTopic.toUpperCase() == "0x0000000000000000000000002dbfc8f37D7CD52d5a28Fac4799BB932446f3F8A".toUpperCase()
   )
   {
     console.error(`The input address ${targetTopic} is a reserved address. Analyzing this will take a long time due to many transactions`);
@@ -493,6 +494,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
 
           //console.log(`claim tx hash ${txHash}`);
           rangeHigh -= BigInt(usdtPaid);
+          rangeLow -= BigInt(usdtPaid);
           break;
         }
 
@@ -530,6 +532,7 @@ async function analyzeActions(txs, db, targetTopic, cToken)
         case "unwrap_w_proof":
         {
           // TODO: reconsider - is anything needed here?
+            // add in a tag for a "bid string" type item... like "pending unwrap"
           break;
         }
 

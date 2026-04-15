@@ -13,7 +13,8 @@ const CHECKPOINT_FILENAME = "finalize-unwrap-checkpoint.txt";
 const NUM_ITEMS_FILENAME = "cUSDT_numItems.txt";
 
 const startBlock = 24369033;  //first finalize unwrap call
-const finalBlock = 24537892;  //top block on feb 25 2026
+//const finalBlock = 24537892;  //top block on feb 25 2026
+const finalBlock = 24788000;  // block on apr 1st 2026
 
 
 async function loadCheckpoint() {

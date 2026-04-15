@@ -72,7 +72,8 @@ async function main() {
             tx TEXT NOT NULL,
             linked_addresses TEXT NOT NULL DEFAULT '[]',
             block INTEGER NOT NULL,
-            UNIQUE(label_prefix, label_id)
+            label_prefix, 
+            label_id
         )
     `);
 
@@ -99,6 +100,12 @@ async function main() {
           block
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
+
+    const updateLabelId = db.prepare(`
+        UPDATE handles
+        SET label_id = ?
+        WHERE handle = ? AND label_id IS NULL
+    `);
   
     const bids = db.prepare(`
         SELECT topic3, tx_hash, block_number
@@ -106,16 +113,64 @@ async function main() {
         WHERE label = ?
       `).all('BID_W_PROOF');
 
-    for(const row of bidsSliced)
+    const wraps = db.prepare(`
+        SELECT topic3, tx_hash, block_number
+        FROM contract_logs
+        WHERE label = ?
+    `).all('WRAP');
+
+    const nullLabelIds = db.prepare(`
+        SELECT tx
+        FROM handles
+        WHERE label_id IS NULL
+    `).all();
+
+    const deleteHandle = db.prepare(`
+        DELETE FROM handles
+        WHERE tx = ?
+    `);
+
+    // selects all where "min" field is NULL
+    // TODO: ought to update this in the contract_logs table too
+    const zeroMins = db.prepare(`
+        SELECT tx
+        FROM handles
+        WHERE min = '0.0'`
+    ).all();
+
+    console.log(
+        db.prepare(`SELECT COUNT(*) AS n FROM handles WHERE min IS NULL`).get()
+    );
+
+/*    
+    for(const row of zeroMins)
+    {     
+        deleteHandle.run(row.tx);
+        console.log(`deleted ${row.tx}`);
+    }
+*/  
+
+
+
+/*
+    for(const row of bids)
     {
         // for bids, we can get the bid id by 
         const receipt = await provider.getTransactionReceipt(row.tx_hash);
         const bidId = BigInt(getTopic1FromReceipt(receipt));
 
+        let actualTopic3 = row.topic3;
+
+        if(!row.topic3)
+        {
+            actualTopic3 = getTopic3FromReceipt(receipt)
+            console.log(`topic3 gotten: ${actualTopic3}`);
+        }
+
         //console.log(`BidID: ${bidId}\t txHash: ${row.tx_hash}`);
         
         insertHandle.run(
-            row.topic3,   // handle
+            actualTopic3,   // handle
             null,            // min
             null,            // max
             null,         // alg_min
@@ -128,7 +183,11 @@ async function main() {
             '[]',         // linked_addresses
             row.block_number             // block
         );
+
         
+
+        //console.log(`bidId ${bidId} \nrow.topic3 ${row.topic3}`);
+        //updateLabelId.run(`${bidId}`, row.topic3);
 
         updated++;
         if(updated % 50 == 0)
@@ -136,6 +195,54 @@ async function main() {
             console.log(`Running... (${updated} updated)`);
         }
     }
+    */
+
+
+    wrapsSliced = wraps.slice(1900,);
+
+   for(const row of wrapsSliced)
+   {
+        // for bids, we can get the bid id by 
+        const receipt = await provider.getTransactionReceipt(row.tx_hash);
+        const wrapId = row.tx_hash.slice(2,34);
+
+        let actualTopic3 = row.topic3;
+
+        if(!row.topic3)
+        {
+            actualTopic3 = getTopic3FromReceipt(receipt)
+            console.log(`topic3 gotten: ${actualTopic3}`);
+        }
+
+        // lets see if this exists in the table already!
+        const {n} = db.prepare(`SELECT COUNT(*) AS n FROM handles WHERE handle = ? AND label_prefix != 'WRAP'`).get(`${actualTopic3}`);
+        if(n != 0)
+        {
+            console.log(`n: ${n}`);
+            console.log(`Need to update table! ${actualTopic3} duplicated!`)
+
+        }
+
+        // since this is WRAP we can know exactly what is val is
+        const wrappedAmount = BigInt(getWrappedAmount(receipt));
+
+        insertHandle.run(
+            actualTopic3,   // handle
+            `${wrappedAmount}`,            // min
+            `${wrappedAmount}`,            // max
+            `${wrappedAmount}`,         // alg_min
+            `${wrappedAmount}`,         // alg_max
+            1,            // known
+            '[]',         // linked_handles
+            "WRAP",         // label_prefix
+            `${wrapId}`,         // label_id
+            row.tx_hash,       // tx
+            '[]',         // linked_addresses
+            row.block_number             // block
+        );
+   }
+   
+    
 
     // TODO: consider implementing try/finally with a while in the try
     await db.close();
@@ -145,7 +252,7 @@ async function main() {
 }
 
 /**
- * @dev Function to get "bidID" from a given transaction receipt
+ * @dev Function to get "bidID" from a given transaction receipt. Needs to be specifically a "bid submitted" event emission
  * @param {Object} receipt - Transaction receipt
  * @param {string} eventSignature - e.g. "Transfer(address,address,uint256)"
  * @returns {string|null} topic[1] as hex string or null
@@ -162,8 +269,36 @@ function getTopic1FromReceipt(receipt) {
     }
   
     return null;
-  }
+}
 
+function getTopic3FromReceipt(receipt) {
+    if (!receipt?.logs) return null;
+  
+    const confidentialTransferTopic = "0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9";  //"bidSubmitted" event
+  
+    for (const log of receipt.logs) {
+      if (log.topics && log.topics[0] === confidentialTransferTopic) {
+        return ("0x" + log.topics[3]) ?? null;  //We can use 6 chars for now because i don't think the number of bids exceeded the max val there
+      }
+    }
+  
+    return null;
+}
+
+function getWrappedAmount(receipt) {
+    if(!receipt?.logs) return null;
+
+    // codes for transfer from a regular ERC-20
+    const transferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+    for (const log of receipt.logs) {
+        if (log.topics && log.topics[0] === transferTopic) {
+          return (log.data) ?? null;  //We can use 6 chars for now because i don't think the number of bids exceeded the max val there
+        }
+      }
+    
+      return null;
+}
 
 
 main().catch((error) => {

@@ -5,9 +5,9 @@ const path = require("path");
 
 
 const { labelFromFuncSig } = require("./lib/funcSig-labels"); 
-const finalBlock = 24537892;  //top block on feb 25 2026 - default block for this project
+//const finalBlock = 24537892;  //top block on feb 25 2026 - default block for this project
 // TODO consider using: 24700000; - easier to check if done - march 20 2026 - https://etherscan.io/block/24700000
-
+const finalBlock = 24788000; // this it Apr 1st 2026
 
 function getDeploymentBlock(token)
 {

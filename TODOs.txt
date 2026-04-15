@@ -1,6 +1,5 @@
 Okay, this repo needs some help
 
-- [ ] The `scan-with-checkpoints` script scans for the function signature, NOT for events. We need to scan for events
 - [ ] We need a robust data storage method that checks for duplication and has lookups
     - oh shit we're gonna use sqlite3 
     - [ ] Oh shit we need to install sqlite3 and see how to read the tables to ensure they're setup correctly
@@ -22,6 +21,10 @@ Okay, this repo needs some help
         - $use
 - [ ] Remove the cUSDT_numItems.txt from git tracking
 - [ ] What is the deal with "multisends.txt"?
+- [ ] update blockchain scanner/db adder to do the following:
+    - [ ] scan all 6 cTokens at once
+    - [ ] check for diff topics when transfers detected, like "redeem" or "bid"
+
 
 ### For Analyze addresses
 - [ ] Reformat the "action" strings and such so that they are all neat - ensure they display bid ids and store that
@@ -47,6 +50,8 @@ Okay, this repo needs some help
 0xAb671e448a2c48f6355c8030621f25033e3Be899
 0xfBf13c45D7498776aAE005998B06EC2177542ff1
 0xa15fa77449243edfbeb7c35f5c551ece256a472e
+
+0x36bcad3a6e12c5fd5371853e861ffd044f835adf  //note that this one is currently borked because there's an unwrap w proof
 
 ### How to display data
 - A balance can be expressed as a sum of different values
