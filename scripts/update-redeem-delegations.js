@@ -192,7 +192,8 @@ async function main() {
         {
             if(newLabel != "")
             {
-    /*            
+                console.log("got here");
+                
               db.prepare(`
                     UPDATE contract_logs
                     SET ERC7702 = ?
@@ -204,7 +205,7 @@ async function main() {
                     SET label = ?
                     WHERE tx_hash = ?
                 `).run(newLabel, row.tx_hash);
-    /*
+    
 
                 // TODO: probably need to consider if other columns should be changed to, topics will be a bit messed up maybe??
             }
