@@ -99,7 +99,7 @@ There are a few things you can reconfigure
 
 ### Discoveries
 
-#### 0.2% (95 of 47000) of cUSDC transfers are to non-zama contracts
+#### 0.2% (95 of 47000) of cUSDT transfers are to non-zama contracts
 - This means the majority are just interacting with the auction contract, which is NOW traceable. 
   - The auction contract was NOT traceable at the time of the auction - the privacy function of the auction was to hide the settlement price. But the settlement price was revealed and used for all bidders.
 - Out of rougly 47k transfers recorded, only about 100 of them were to addresses that weren't the wrapper or auction contracts.
@@ -147,6 +147,17 @@ node scripts/total-external-transfers.js
 ```
 
 This is confirmed also by sorting for "TRANSFER" in the db under the labels column. There are about 95 matching entities.
+
+#### There are 3 dimensions of privacy (so far)
+
+1. The possible range of balance
+  The difference between the lowest and highest possible balance for an address
+
+2. The anonymity set - not sure if this applies here 
+  The size of the number of "possible other" data points
+
+3. The number of "dependencies" a balance has.
+  The number of independent variables that would exist if describing this value as a summation
 
 
 

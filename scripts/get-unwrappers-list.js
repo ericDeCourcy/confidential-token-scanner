@@ -1,3 +1,5 @@
+//This file prints a list of all addresses which did a full balance unwrap
+
 const Database = require("better-sqlite3");
 
 
@@ -14,10 +16,14 @@ function main() {
 
     const rows = stmt.iterate();
 
+    let i = 0;
     for(const row of rows) 
     {
         console.log(row.cleaned_topic1);
+        i++;
     }
+
+    console.log(`number of unwrappers: ${i}`);
 
     db.close();
 

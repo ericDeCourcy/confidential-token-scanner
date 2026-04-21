@@ -1,0 +1,282 @@
+const hre = require("hardhat");
+const Database = require("better-sqlite3");
+const fs = require("fs/promises");
+const path = require("path");
+
+
+const { labelFromFuncSig } = require("./lib/funcSig-labels"); 
+//const finalBlock = 24537892;  //top block on feb 25 2026 - default block for this project
+// TODO consider using: 24700000; - easier to check if done - march 20 2026 - https://etherscan.io/block/24700000
+const finalBlock = 24788000; // this it Apr 1st 2026
+
+const cBRON_address = "0x85dE671c3bec1aDeD752c3Cea943521181C826bc";
+const ctGBP_address = "0xa873750ccbafd5ec7dd13bfd5237d7129832edd9";
+const cUSDC_address = "0xe978F22157048E5DB8E5d07971376e86671672B2";
+const cUSDT_address = "0xAe0207C757Aa2B4019Ad96edD0092ddc63EF0c50";
+const cWETH_address = "0xda9396b82634Ea99243cE51258B6A5Ae512D4893";
+const cZAMA_address = "0x80cb147fd86dc6dee3eee7e4cee33d1397d98071";
+
+
+async function loadCheckpoint(checkpointFilename, token) {
+  try {
+    const text = await fs.readFile(checkpointFilename, "utf8");
+    console.log("reading the file");
+    const parsedVal = parseInt(text, 10);
+    return parsedVal;
+  } catch (err) {
+    // If first run and file doesn't exist, start from cUSDC deployment 
+    if (err.code === "ENOENT") {
+      return 24096697;  //first block where any cToken is deployed (deployment of CUSDC)
+    }
+    throw err;
+  }
+}
+
+// TODO: get rid of numItems
+async function loadNumItems(numItemsFilename) {
+  try {
+    const text = await fs.readFile(numItemsFilename, "utf8");
+    console.log("reading the file");
+    const parsedVal = parseInt(text, 10); 
+    return parsedVal;
+  } catch (err) {
+    // TODO: this is copied from loadCheckpoint, do we even need to return 0 here?
+    if (err.code === "ENOENT") {
+      return 0;
+    }
+    throw err;
+  }
+}
+
+function getArg(flag) {
+  const index = process.argv.indexOf(flag);
+  if (index === -1 || index + 1 >= process.argv.length) {
+    return null;
+  }
+  return process.argv[index + 1];
+}
+
+// TODO: should we also return the deployment block number here?
+function getAddressFromToken(token) {
+  switch(token) {
+    case "cBRON":
+      return "0x85dE671c3bec1aDeD752c3Cea943521181C826bc";
+    case "ctGBP":
+      return "0xa873750ccbafd5ec7dd13bfd5237d7129832edd9";
+    case "cUSDC":
+      return "0xe978F22157048E5DB8E5d07971376e86671672B2";
+    case "cUSDT":
+      return "0xAe0207C757Aa2B4019Ad96edD0092ddc63EF0c50";
+    case "cWETH":
+      return "0xda9396b82634Ea99243cE51258B6A5Ae512D4893";
+    case "cZAMA":
+      return "0x80cb147fd86dc6dee3eee7e4cee33d1397d98071";
+    default:
+      throw new Error(`cToken not found: ${token}`);
+  }
+}
+// TODO: make sure that each of the loads and writes is to a filename thats correct for this token
+// TODO: implement a lookup table where given a token name, it will find the corresponding address and use it
+// TODO: we will also need block numbers for each of the cTokens
+// TODO: we will also need a "final" block number
+
+async function main() {
+  let sleepRate = getArg("--sleep");
+  if(sleepRate == null)
+  {
+    sleepRate = 0;
+  }
+
+  let endBlock = getArg("--endBlock");
+  if(endBlock == null || endBlock == 0)
+  {
+    endBlock = finalBlock;
+  }
+
+  let checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `combined_checkpoint.txt`), token);
+  const numItems = await loadNumItems(path.join(__dirname, "checkpoints", `combined_numItems.txt`));
+
+  let startBlock = getArg("--startBlock");
+  if(startBlock != null)
+  {
+    checkpoint = startBlock;
+  }
+
+
+  await addTransactions(checkpoint,endBlock,numItems,sleepRate);
+}
+
+
+async function addTransactions(startingBlock,endBlock,numItems,sleepRate) {  
+    const cUSDT_db = new Database(`cUSDT_events.db`);
+    const cUSDC_db = new Database(`cUSDC_events.db`);
+    const cBRON_db = new Database(`cBRON_events.db`);
+    const ctGBP_db = new Database(`ctGBP_events.db`);
+    const cWETH_db = new Database(`cWETH_events.db`);
+    const cZAMA_db = new Database(`cZAMA_events.db`);
+    
+    const provider = hre.ethers.provider; 
+
+    let currentItems = numItems;
+    let currentBlock = Number(startingBlock);
+    
+    console.log(`currentBlock: ${currentBlock} --- finalBlock: ${endBlock} --- difference: ${endBlock - currentBlock}`);
+
+    sleep(sleepRate);
+
+    try 
+    {
+      while(currentBlock < endBlock && !shuttingDown)
+      {
+        console.log(`scanning blocks ${currentBlock} to ${currentBlock + 9}`);
+
+        // here's a good transaction: https://etherscan.io/tx/0x8034620e07155d0206c0c368681fad1e3d3567c140b1ac6a7dfd769ed84878a7#eventlog
+          // this is in block 24480551, its an unwrap tx
+        // also examples in: 24480532, 24482033, 24483005
+        const logs = await provider.getLogs({
+            address: [cBRON_address,
+                      ctGBP_address,
+                      cUSDC_address,
+                      cUSDT_address,
+                      cWETH_address,
+                      cZAMA_address
+            ],
+            fromBlock: currentBlock,
+            toBlock: currentBlock + 9,
+            topics: [
+                      ["0x67500e8d0ed826d2194f514dd0d8124f35648ab6e3fb5e6ed867134cffe661e9",    //confidential transfer
+                       "0x2d4edf3c2943002120f53dab3f8940043f34799f4a92ab90f2f81f7dd004a49e"]
+                    ], 
+            // This is the sig for "confidentialTransfer" - TODO: check for other logs that aren't this
+              // TODO: we need to check for finalizeUnwrap transactions as well - these are sort of covered by "unwrap" calls already
+              // TODO: unwrapRequested would be a good event to scan for, accompanies the confidentialTransfer event tho
+                // ex: https://etherscan.io/tx/0x3e1246ada889f12d7269b69dcd7c1b619ca14396da32ac22cd34b29ed680e30c#eventlog
+              
+          });
+
+        for (const log of logs) {
+          console.log(`txHash: ${log.transactionHash}`);
+          currentItems++;
+        }
+
+        // wraps all "insert log" actions into a single transaction
+        const insertLogsTx = db.transaction((rows, whichDb) => {
+            for (const row of rows) addToDb(whichDb,row);
+          });
+
+        // TODO: How do we handle internal transactions here? What if someone wraps/unwraps via a contract, such that the original call isn't one of our expected function signautres
+    
+        const { chainId } = await provider.getNetwork();
+
+        // TODO: understand why this is down here while the insertLogsTx thing is up there
+        const rows = await Promise.all(
+          logs.map(async (log) => {
+            const tx = await provider.getTransaction(log.transactionHash);
+            const funcSig = tx?.data?.slice(0,10) || null;
+            const label = labelFromFuncSig(funcSig);
+
+            return {
+              chain_id: Number(chainId),
+              address: log.address.toLowerCase(),
+              block_number: Number(log.blockNumber),
+              block_hash: log.blockHash,
+              tx_hash: log.transactionHash.toLowerCase(),
+              tx_index: Number(log.transactionIndex),
+              log_index: Number(log.index), 
+              topic0: (log.topics?.[0] || "").toLowerCase(),
+              topic1: (log.topics?.[1] || "").toLowerCase(),
+              topic2: (log.topics?.[2] || "").toLowerCase(),
+              topic3: (log.topics?.[3] || "").toLowerCase(),
+              topics_json: JSON.stringify(log.topics || []),
+              data: log.data, //TODO: I don't think this field is anything, consider removing it
+              removed: log.removed ? 1 : 0,
+              func_sig: funcSig,
+              label: label,
+            };
+          })
+        );
+
+        // create groups to add to each db
+        const groups = new Map();
+
+        // separate rows into groups of rows, per address
+        for (const row of rows) {
+          if (!groups.has(row.address)) {
+            groups.set(row.address, []);
+          }
+          groups.get(row.address).push(row);
+        }
+
+        insertLogsTx(groups[cBRON_address], cBRON_db);
+        insertLogsTx(groups[ctGBP_address], ctGBP_db);
+        insertLogsTx(groups[cUSDC_address], cUSDC_db);
+        insertLogsTx(groups[cUSDT_address], cUSDT_db);
+        insertLogsTx(groups[cWETH_address], cWETH_db);
+        insertLogsTx(groups[cZAMA_address], cZAMA_db);
+
+        //records last block scanned so +9
+        await fs.writeFile(path.join(__dirname, "checkpoints", `combined_checkpoint.txt`), (currentBlock+9).toString(), (err) => { 
+          if (err) throw err;
+        })
+
+        await fs.writeFile(path.join(__dirname, "checkpoints", `combined_numItems.txt`), currentItems.toString(), (err) => {
+          if(err) throw err;
+        })
+
+        // Increment block by 10 to do the next round 
+        currentBlock += 10;
+
+        await sleep(sleepRate); //add a crude sleep function to prevent alchemy api from timing out
+        //@dev this is very handy when your scanner hits the auction and reveal - lots of activity on those days.
+        //    I used 3000 to fight rate-limiting from alchemy
+      }
+
+    }
+    finally {
+      await db.close();
+      console.log("closed db");
+
+      console.log(`checkpoint block = ${currentBlock+9}`);
+      console.log(`count of db items = ${currentItems}`);
+      console.log(`\nPress CTRL+C`);  //TODO idk why this needs to be pressed again
+    }
+}
+
+
+// Handle shutdown
+let shuttingDown = false;
+
+process.on("SIGINT", async () => {
+  console.log("\nGracefully shutting down...");
+  shuttingDown = true;
+});
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// row is a special data struct containing all the elements of a row
+function addToDb(db, row) {
+  
+  const insertLog = db.prepare(`
+    INSERT OR IGNORE INTO contract_logs (
+      chain_id, address, block_number, block_hash,
+      tx_hash, tx_index, log_index,
+      topic0, topic1, topic2, topic3,
+      topics_json, data, removed, func_sig,
+      label
+    ) VALUES (
+      @chain_id, @address, @block_number, @block_hash,
+      @tx_hash, @tx_index, @log_index,
+      @topic0, @topic1, @topic2, @topic3,
+      @topics_json, @data, @removed, @func_sig,
+      @label
+    )
+  `);
+}
+
+
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
