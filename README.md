@@ -266,6 +266,7 @@ This script will return all transactions which have a topic in the "confidential
 - what percent of people are doing "full unwraps" vs "unwraps with proof"
 	- cUSDT - 642 with proof, 9519 without proof (full unwrap) --> 93.7% are full unwraps
 
+// As of block 24943005
 | cToken | Wrap | Transfer | Transfer_w_proof | Unwraps | Unwrap_w_proof | Traceable Transfers | Traceable Unwraps |
 | ------ | ---- | -------- | ---------------- | ------- | -------------- | ------------------- | ----------------- |
 | cUSDT  |      | 53       | 60               | 9521    | 642            | 46.9%               | 93.7%             |
@@ -284,20 +285,32 @@ This script will return all transactions which have a topic in the "confidential
 - how often does someone have exactly one recipient from their sends along with a full withdrawal?
 - Lets attempt to label each FHEVM handle - how many of them are we able to say with certainty what their values are?
 
-### For "redeem delegations"
-See [[NFP_14]]
-
 ### Findings to turn into a twitter thread
 Zama scanner findings
 
-- Privacy leaks happen in two forms: unproven unwraps and unproven transfers. Since handles need to be accessible by those using them, transfers/unwraps without proofs have a very limited set of values. These are almost always the entire balance of the account. These handles can be traced
-- We can likely "score" the private usage of cTokens by counting the handles which have been used to represent balances or transfer amounts, and then counting the ratio of handles which have only one possible value. Since the important private information behind cTokens is the balances themselves, this score effectively represents "How good the system is". To improve the system, we just need to improve this ratio. 
-- We can describe handles as a summation of dependencies. Wraps + transfers_in - unwraps - transfers_out. These dependencies are also sometimes handles or sometimes known values. The literal value can be expressed as a range {min,max}.
-	- Using the algebraic approach, we can back-solve private values. Practically, this means your privacy may go down as time goes on. Algebraic values getting solved cascades into other algebraic values.
-- Since wraps/unwraps are revealed, the only secret information is transfers. Transfers are the mechanism by which we increase privacy; we create more unknown values by doing more transfers. 
-- We can improve the privacy of cTokens substantially by removing `transfer` and only allowing `transferWithProof`. This can be done at the UI level by avoiding `transfer`
-- Zama auction was the biggest use case by far of cUSDT. Out of 47000 transactions, ~100 did not involve the auction contracts. 
-- Transaction "carefulness" goes down with mass use, drastically. Of the transfers of cUSDT, ~47% of those scanned were traceable. This tells us something - the vast majority of users are not paying that close attention. 
-- After the auction, most users of cUSDT pulled their funds back out. ~93% of unwraps were traceable and "full balance unwraps"
-- Privacy loss over time is exemplified by the Zama auction. Once the auction price was settled and their $ZAMA transferred, it became very easy to back-compute people's bids. 
-- Go check out my github if you want a giant DB of all cUSDT transfer events. I also have the significantly smaller DBs of the other cTokens.
+//We can only have 160 chars per tweet so this is the length -----------------------------------------------------------------------------------------------------
+
+- I built a thing to attempt to trace ZAMA cToken balances. I believe we must test private systems to improve them. <TODO tag people>
+- Here's the github: https://github.com/ericDeCourcy/confidential-token-scanner Its a mess right now, sorry. If people are interested i'll clean it up
+- This project scanned for transfer events of cTokens, put them in a database, and attempted to construct a narrative for each address.
+- You can query some address and see what actions they took with their cTokens, and a "range" of values for those cTokens. I scanned up to block 24943005
+  <TODO: add an image>
+- Ranges are informed by wraps, unwraps and transfers. Wrap 100 tokens, your range is {100,100}. Do a transfer, your balance range is {0,100}.  
+- This approach wasn't great, and i'd really like to rework this into an algebraic solver (more on that below). But we can still learn alot.
+- Out of all the cTokens, cUSDT was by far most used. This was for the Zama auction. Out of 47k transactions, only about 100 were non-auction related. 
+- cUSDT behavior was also notably different than others. 43% of transfer calls were "unproven", compared to less than 4% on all other tokens.
+- This shows that practical usage tends to not care about privacy. As usage goes up, privacy goes down.
+- The other tokens had significantly less usage. cUSDC had about 400 transactions, and all others less than 100.
+- After the auction, about 93% of unwraps were "full unwraps", and therefore were traceable. Again, practical usage cares less about privacy than I'd hope. 
+- Privacy is lost by unwraps and transfers without proofs. There are often only a few handles an account can use; they often unwrap the entire balance (traceable)
+- We can consider a handle "known" if we know its exact, plaintext value. Unwraps and wraps expose this via the associated ERC20 amount
+- We can compute a simple "privacy score" as "unknown handles / total handles". For cTokens the total handle set is balances and transfer amounts. 
+- Thus, we can improve the overall privacy of the system by increasing the ratio of unknown handles to total handles.
+- We can describe handles as an algebraic sum. "balance = tx_in_1 + tx_in_2 - tx_out_3". We can build a graph and solve these for constant values.
+- Privacy can decline over time. Reason is that more information (exposed in the future) helps solve the graph. Algebraic solves can cascade.
+- The auction is a good micro example of this - after bidding ended it was possible to understand almost all bids and current balances. This is by design, btw.
+- This project first attempted to compute balances as ranges - {min,max} - this approach compresses information and loses the helpful dependency graph.
+- Using the algebraic approach, we can back-solve private values, mostly from exposed wraps/unwraps. Algebraic solves cascade.
+- Practically, this means *who* you transact with matters. If they do a "full unwrap", they may expose your balance.
+- Ultimately, only "proven transfers" and "proven unwraps" are private. These are the levers with which we increase "privacy score" as defined above.
+- For developers, if you care <3, consider ONLY implementing "transfer with proof" calls in your UI. Users, use the "with proof" versions of functions.
