@@ -142,5 +142,7 @@ Why did i do this? Simply because, someone nefarious out there is already doing 
 Don't be shy!
 
 ericdecourcy123@gmail.com
+
 @crudeRice on X/twitter
+
 https://github.com/ericDeCourcy/confidential-token-scanner - go open a pull request!
