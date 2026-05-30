@@ -1,3 +1,14 @@
+# Confidential Token Scanner
+
+This repo's purpose is to attempt to trace ERC7984 tokens on Ethereum. It is mostly composed of scanners, databases, and scripts I'll call "parsers".
+
+- **Scanners:** These scripts exist to find transactions involving ERC7984 tokens on Ethereum, and place them into the databases. They also may read from the databases and query for more information on the blockchain, or further classify information about the transactions. In general, _scanners add to the datatabases_
+- **Databases:** These are SQL databases that contain transaction information for the different ERC7984's. Each token gets its own separate `.db` file. Right now within the databases, there are two tables, one of which is still under construction. The first table contains all _transactions_ involving the token in question. The second table contains all _handles_ (ZAMA fhEVM encrypted values) associated with that token. This is still under construction, but the goal is to be able to reason about handles' interconnections and parse their values without needing the transaction data.
+- **Parsers:** These are scripts that read from the databases and display information in a human readable format. For example, `analyze-address.js` will show all transactions involving some address, in order, and attempt to deduce the balance of that address at each moment in time given basic logical rules.
+
+**Further work:** Right now the next stage of this project is to flesh out the "handles" table within the databases and begin constructing "algebraic representations" of the various handles. 
+
+  
 ### Setup
 
 1. This is a hardhat project, so make sure you have hardhat installed.
@@ -86,6 +97,13 @@ $ node scripts/analyze-address.js 0x9B98D08671E6F40cE7a4b4E4bf39b8D2538bA47F cUS
 
 ![Scanner output](./images/analyze-address-output.png)
 
+### "find address" Script
+This script will return all transactions which have a topic in the "confidential transfer" field which matches some address. For example:
+
+- `node scripts/find-address.js 0xfc534a31e8877dc914989267b124a59d6911576d`
+
+ This guy did two unwraps, but otherwise pretty standard behavior
+
 
 ### Reconfiguration
 
@@ -93,98 +111,21 @@ There are a few things you can reconfigure
 
 - The network
 - The token contract address
-- The block range to scan. Alchemy used to limit queries to 500 block ranges, but now its limited down to 10
-
-#TODO setup a simple re-configuration mechanism
-
-### Discoveries
-
-#### Percentages of diff transfers
-
-
-#### 0.2% (95 of 47000) of cUSDT transfers are to non-zama contracts
-- This means the majority are just interacting with the auction contract, which is NOW traceable. 
-  - The auction contract was NOT traceable at the time of the auction - the privacy function of the auction was to hide the settlement price. But the settlement price was revealed and used for all bidders.
-- Out of rougly 47k transfers recorded, only about 100 of them were to addresses that weren't the wrapper or auction contracts.
-- Many accounts involved in these transfers show very little activity. "Interesting" transactions are between two non "safe" contracts (safe contracts being wrappers, auction contracts, zama distributor contracts, etc.)
-- Apparently heavily correlated with people actually calling the dang transfer function 
-```
-Fully external transfers
-95
-
----------------------- Address ----------------------------------------|-------- number of interesting txs 
-https://etherscan.io/address/0x5e310f01a0b13278cf676b3439d32859e0aad82d 17
-https://etherscan.io/address/0x5c178c08363928c6296ed420eaeef73e21b667d4 11
-https://etherscan.io/address/0x1dc385c0594358886a1b21eda0ad4c053214c699 6
-https://etherscan.io/address/0x77b7d6545d352bfd858b308343d1a4e414cb4d7e 6
-https://etherscan.io/address/0xc695d7097a6a4208b33cc7b85f8a6844a90977dd 6
-https://etherscan.io/address/0xb905bce0188045fde5aab20742ec17e9ab6dd853 6
-https://etherscan.io/address/0xf38d9f73c6bcb9e047082442580f332e3cbcedce 6
-https://etherscan.io/address/0x3d9a867c1ff6bbac2a01dc2678cd7819216874f6 4
-https://etherscan.io/address/0x6d7b5a32fc63c5011c3dd217e151c9c118908dfd 4
-https://etherscan.io/address/0x36afce8f48bbb961c76ec20bc07f34f313374fd9 4
-https://etherscan.io/address/0x3a947148972087dd89c2fda6f0a8cb915948457b 4
-https://etherscan.io/address/0x441319b8e436e3fe7d2b685377980fdba203cbec 4
-https://etherscan.io/address/0x4978a0d5e2e582a03bc58cdf7a8e89639756c74b 4
-https://etherscan.io/address/0x2c2a9ab5922632b397495d56b66a276e09c42d91 4
-https://etherscan.io/address/0x3a531341103d589aea7481be75edbca2e9a69605 3
-https://etherscan.io/address/0xf13a99222b7e613855cdbc9a667973af7aa202fe 2
-https://etherscan.io/address/0x14db914aec49981153c7b16bf85d2ac997c34133 2
-https://etherscan.io/address/0xeb7e54b34548a2a8d924fc323f897cd42425b525 2
-https://etherscan.io/address/0x17e53556fdda3bf5e53b73af1b68cfcedadd6b1c 2
-https://etherscan.io/address/0xfdad746daecfb2e58bc5c6b3ca7aa208081a600f 2
-https://etherscan.io/address/0xc91a004d5baa708230527283bfaee3e1d19100b2 2
-https://etherscan.io/address/0x3776d95fbb1859de65b54204a9778c8bb19d2873 2
-https://etherscan.io/address/0xc54489677956fdc2acb376185761a858ce85544a 2
-https://etherscan.io/address/0x3c8d0ef4f5fe05cfcd60d98e35ee493a0c12f21c 2
-https://etherscan.io/address/0x255cdddbec2c76b2f409248abeea49c1b1c6bf18 2
-```
-
-You wanna run this for yourself??? Huh?? Do ya?
-
-You'll need a `events.db` for this
-
-run:
-```
-node scripts/total-external-transfers.js
-```
-
-This is confirmed also by sorting for "TRANSFER" in the db under the labels column. There are about 95 matching entities.
-
-#### Dimensions of privacy (so far)
-
-1. The possible range of balance
-  The difference between the lowest and highest possible balance for an address
-
-2. The anonymity set - total number of txs overall, esp to senders/recipients associated with you via other txs
-  The size of the number of "possible other" data points
-
-3. The number of "dependencies" a balance has.
-  The number of independent variables that would exist if describing this value as a summation (all "transfer ins" minus "transfer outs")
-
-
-#### Usage stats
-| cToken | Wrap | Transfer | Transfer_w_proof | Unwraps | Unwrap_w_proof | Total |
-| ------ | ---- | -------- | ---------------- | ------- | -------------- | ----- |
-| cUSDT  |      |          |                  |         |                |       |
-| cUSDC  | 150  | 2        | 54               | 26      | 103            | 129   |
-| cBRON  | 32   | 0        | 42               | 0       | 16             | 16    |
-| ctGBP  | 5    | 0        | 4                | 0       | 4              | 4     |
-| cWETH  | 16   | 0        | 3                | 0       | 18             | 7     |
-| cZAMA  | 19   | 0        | 16               | 4       | 24             | 17    |
+- The block range to scan. Keep in mind limits imposed by your RPC provider. I'm using the Alchemy free tier so i get 10 block ranges, which is the default configuration in this repo currently.
 
 
 ### Future/Planned work
 
 - [ ] Easy configuration of params network, token address, and block range. Also adding starting and final block.
-- [ ] Automated analysis of the outputs. Eventual goal is that we have a "range" of token balances for each address
-    - How do we get here? We can assume "ranges" for balances for well behaved tokens, and then transfers will affect the ranges of their recipients
+- [ ] Develop the "algrebraic analysis" approach
     
-### Learnings
-- [ ] #TODO Check if tokens are generally used "privately" or "not-privately" for transfers
-- [ ] #TODO Should there be a default path in the "unwrap" function which just "zeroes" your balance rather than storing it as an euint? This would be easier as if you do an unwrap of the handle representing your balance then you're clearly emptying your balance
+### Unwrap shortcut improvement
+
+There may be an improvement that can be made to the OZ ERC7984 token:
+
+There should be a default path in the "unwrap" function which just "zeroes" your balance rather than storing it as an euint? This would be easier as if you do an unwrap of the handle representing your balance then you're clearly emptying your balance
 	- In [`_update` function of ERC7984](https://github.com/OpenZeppelin/openzeppelin-confidential-contracts/blob/136840e97e6ec7331642821a9bd51c61cca1ebf9/contracts/token/ERC7984/ERC7984.sol#L284-L289)
-		- there could be branch where 
+		- there could be branch where: 
 ```
 if (from == address(0)) {
 	(success, ptr) = FHESafeMath.tryIncrease(_totalSupply, amount);
@@ -206,111 +147,12 @@ if (from == address(0)) {
 	_balances[from] = ptr;
 }
 ```
-- [ ] There may be a standard user flow we can categorize users by
 
-### Get address Script
-This script will return all transactions which have a topic in the "confidential transfer" field which matches some address. For example:
-
-- `node scripts/find-address.js 0xfc534a31e8877dc914989267b124a59d6911576d` 
-	- This guy did two unwraps, but otherwise pretty standard behavior
-		- wrap, bid, recieve multicall, unwrap
-- This address also is interesting - similarly simple setup: `0x3a292b57e41d88309201f2df9cf46230c58008e0`
-	- #TODO I would really like to understand where the handles he was using came from
-- Havent tried this with the script yet, but...
-	- https://etherscan.io/tx/0xcaf5041e6846212fe99b11a3540a1e926d3903dfa7a3782b95affe148e5d72ab#eventlog
-	- In this tx, you can see the "confidential amount transferred" is the result of a comparison...
-		- `6C9003B48BB2080219AF2B18CC8A6B895B7B9FB9A0FF00000000000000010500` is the conf transfer handle
-		- it is the `result` of `FHEifThenElse` where the "control" is the result of a `FheGe` on two of the same handle
-			- `519CBD8D0DA06573ACA5C170CC2A7517B0F0646A34FF00000000000000010500` 
-				- this handle is compared to itself for FheGe, where the result `54DF...` becomes the control for the if/else above
-				- Also subbed from itself, where the result is the "true" case for the Ge thing
-					- 
-
-### Basic unwrap tracing script
-1. identify an address
-2. for this address, identify transactions which involved confidential transfers
-3. For the "unproved unwrap", identify the handle which is being unwrapped
-	1. Find "unwrap" call - look at topic3 in confidential transfer
-4. pull all logs for cUSDT contract interactions with this user, find all instances of "unwrap handle"
-5. magically identify where that handle is born
-
-### Deliverable ideas
-- Show the proportion of "known" versus "unknown" balances - this will be somewhat inflated because so many balances are "definitely zero" due to unwrapping total balance
-
-### Findings
-- Simple UX changes could make token history a lot more hidden
-	- Not allowing things to go through without a proof
-	- Maybe even removing proving altogether
-- Unwraps are not equal - the issue with unwraps is not that they reveal how much your clear-space token balance is, its that they *can* reveal your encrypted balance to be 0 
-- For tracking, we don't really need to worry about bids, we can just look at if ZAMA was transferred then multiply the amount transferred by the price `0.05` and subtract that from the user's balance
-- If you're not *trying to do it right*, you're doing it wrong. This is not good
-	- this is referring to the frontend i think
-- all balances are constrained by transfer events. 
-	- [ ] Does this mean that the privacy set is constrained? by the possibilities of different balances..? 
-- "Bits of randomness" is a way of thinking about how "private" a system is.... maybe? IDK if this makes sense
-- Backpropogating all the connections will be difficult, i wonder how we can do that
-	- once we have all handles listed in db
-	- for every address involved in transfers for cToken
-		- analyzeAddress and get all handles associated with  that address
-		- for each handle
-			- find all instances of handles which are "associated" with this handle. Keep going until there are no new handles, store all these handles in a list (group)
-				- [ ] what does associated mean precisely? #TODO
-					
-			- [ ] from every "unwrap" transaction, find what handle it retroactively defines. Throughout the group, replace this handle with its literal value and attempt to solve if all handles present sum to this handle.
-				- [ ] To store this we need two columns:
-					- AssociatedHandles (JSON)
-					- Equation (String)
-						- perhaps the table should be "known value", "known value range", "agebraic value", "associated handles(JSON)"
-- Privacy decays over time - as more info becomes known, eventually your balance can also become known.
-### Questions this tool answers
-- what percent of people are doing "full unwraps" vs "unwraps with proof"
-	- cUSDT - 642 with proof, 9519 without proof (full unwrap) --> 93.7% are full unwraps
-
-// As of block 24943005
-| cToken | Wrap | Transfer | Transfer_w_proof | Unwraps | Unwrap_w_proof | Traceable Transfers | Traceable Unwraps |
-| ------ | ---- | -------- | ---------------- | ------- | -------------- | ------------------- | ----------------- |
-| cUSDT  |      | 53       | 60               | 9521    | 642            | 46.9%               | 93.7%             |
-| cUSDC  | 150  | 2        | 54               | 26      | 103            | 3.57%               | 20.1%             |
-| cBRON  | 16   | 0        | 42               | 0       | 16             | 0%                  | 0%                |
-| ctGBP  | 5    | 0        | 4                | 0       | 4              | 0%                  | 0%                |
-| cWETH  | 16   | 0        | 3                | 0       | 18             | 0%                  | 0%                |
-| cZAMA  | 19   | 0        | 16               | 4       | 24             | 0%                  | 14.3%             |
+This improvement can be made because it reduces HCU without revealing any new information. 
 
 
-- what percent of transfers are "full transfers" vs "partial transfers"
-	- cUSDT - 60 w proof,  53 without --> 46.9% are full transfer
-- How much legitimate usage of the token is there vs auction usage
-- Can I definitively tell you the confidential token balance of X% accounts, and Y% accounts where the balance is nonzero?
-- how often does someone have exactly one sender before withdrawing? (this indicates all funds came from one person)
-- how often does someone have exactly one recipient from their sends along with a full withdrawal?
-- Lets attempt to label each FHEVM handle - how many of them are we able to say with certainty what their values are?
 
-### Findings to turn into a twitter thread
-Zama scanner findings
 
-//We can only have 160 chars per tweet so this is the length -----------------------------------------------------------------------------------------------------
-
-- I built a thing to attempt to trace ZAMA cToken balances. I believe we must test private systems to improve them. <TODO tag people>
-- Here's the github: https://github.com/ericDeCourcy/confidential-token-scanner Its a mess right now, sorry. If people are interested i'll clean it up
-- This project scanned for transfer events of cTokens, put them in a database, and attempted to construct a narrative for each address.
-- You can query some address and see what actions they took with their cTokens, and a "range" of values for those cTokens. I scanned up to block 24943005
-  <TODO: add an image>
-- Ranges are informed by wraps, unwraps and transfers. Wrap 100 tokens, your range is {100,100}. Do a transfer, your balance range is {0,100}.  
-- This approach wasn't great, and i'd really like to rework this into an algebraic solver (more on that below). But we can still learn alot.
-- Out of all the cTokens, cUSDT was by far most used. This was for the Zama auction. Out of 47k transactions, only about 100 were non-auction related. 
-- cUSDT behavior was also notably different than others. 43% of transfer calls were "unproven", compared to less than 4% on all other tokens.
-- This shows that practical usage tends to not care about privacy. As usage goes up, privacy goes down.
-- The other tokens had significantly less usage. cUSDC had about 400 transactions, and all others less than 100.
-- After the auction, about 93% of unwraps were "full unwraps", and therefore were traceable. Again, practical usage cares less about privacy than I'd hope. 
-- Privacy is lost by unwraps and transfers without proofs. There are often only a few handles an account can use; they often unwrap the entire balance (traceable)
-- We can consider a handle "known" if we know its exact, plaintext value. Unwraps and wraps expose this via the associated ERC20 amount
-- We can compute a simple "privacy score" as "unknown handles / total handles". For cTokens the total handle set is balances and transfer amounts. 
-- Thus, we can improve the overall privacy of the system by increasing the ratio of unknown handles to total handles.
-- We can describe handles as an algebraic sum. "balance = tx_in_1 + tx_in_2 - tx_out_3". We can build a graph and solve these for constant values.
-- Privacy can decline over time. Reason is that more information (exposed in the future) helps solve the graph. Algebraic solves can cascade.
-- The auction is a good micro example of this - after bidding ended it was possible to understand almost all bids and current balances. This is by design, btw.
-- This project first attempted to compute balances as ranges - {min,max} - this approach compresses information and loses the helpful dependency graph.
-- Using the algebraic approach, we can back-solve private values, mostly from exposed wraps/unwraps. Algebraic solves cascade.
 - Practically, this means *who* you transact with matters. If they do a "full unwrap", they may expose your balance.
 - Ultimately, only "proven transfers" and "proven unwraps" are private. These are the levers with which we increase "privacy score" as defined above.
 - For developers, if you care <3, consider ONLY implementing "transfer with proof" calls in your UI. Users, use the "with proof" versions of functions.
