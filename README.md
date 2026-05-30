@@ -60,7 +60,7 @@ $ node scripts/scan-all-cTokens.js --endBlock 12345678
 
 ```
 
-This will scan the all the confidential tokens which are live on ethereum. It will update the various `.db` files accordingly.
+This will scan the all the confidential tokens which are live on ethereum. It will update the various `.db` files whenever a confidential transfer event is found.
 
 `--endBlock` is the last block to scan
 
