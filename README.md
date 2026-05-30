@@ -56,26 +56,17 @@ module.exports = {
 Run this command in the root directory:
 
 ```
-$ node scripts/scan-cToken.js --token cUSDT --sleep 1000 --endBlock 12345678 --startBlock 12345678
+$ node scripts/scan-all-cTokens.js --endBlock 12345678 
 
 ```
-All flags except `--token` are optional.
 
-This will scan the cUSDT confidential token which is live on ethereum and was used for the $ZAMA token auction.
-
-`--sleep` will determine the time between API queries, which is useful to avoid rate limiting, especially in the case of USDT around the time of the ZAMA auction. It is an optional parameter. It is specified in milliseconds.
-
-`--token` is a mandatory parameter. It has the following options:
-- `cBRON`
-- `ctGBP`
-- `cUSDC`
-- `cUSDT`
-- `cWETH`
-- `cZAMA`
+This will scan the all the confidential tokens which are live on ethereum. It will update the various `.db` files accordingly.
 
 `--endBlock` is the last block to scan
 
-`--startBlock` will override loading from the checkpoint, and instead load from some block
+`--sleep` is an optional parameter which will determine the time between API queries, which is useful to avoid rate limiting, especially in the case of USDT around the time of the ZAMA auction. It is an optional parameter. It is specified in milliseconds.
+
+`--startBlock` will override loading from the checkpoint, and instead load from the specified block. If this is not used, the scanner will start from the value stored in `combined_checkpoint.txt`
 
 ### See all transactions for an address
 - `find-address.js` - this will allow you to see all transactions involving a specific address, and will provide etherscan links to them
