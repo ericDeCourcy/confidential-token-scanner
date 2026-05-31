@@ -5,9 +5,8 @@ const path = require("path");
 
 
 const { labelFromFuncSig } = require("./lib/funcSig-labels"); 
-//const finalBlock = 24537892;  //top block on feb 25 2026 - default block for this project
-// TODO consider using: 24700000; - easier to check if done - march 20 2026 - https://etherscan.io/block/24700000
-const finalBlock = 24788000; // this it Apr 1st 2026
+//const finalBlock = 24788000; // this Apr 1st 2026
+const finalBlock = 24943000;  //April 23 2026
 
 const cBRON_address = "0x85dE671c3bec1aDeD752c3Cea943521181C826bc";
 const ctGBP_address = "0xa873750ccbafd5ec7dd13bfd5237d7129832edd9";
@@ -75,10 +74,14 @@ function getAddressFromToken(token) {
       throw new Error(`cToken not found: ${token}`);
   }
 }
-// TODO: make sure that each of the loads and writes is to a filename thats correct for this token
-// TODO: implement a lookup table where given a token name, it will find the corresponding address and use it
-// TODO: we will also need block numbers for each of the cTokens
-// TODO: we will also need a "final" block number
+
+
+const cUSDT_db = new Database(`cUSDT_events.db`);
+const cUSDC_db = new Database(`cUSDC_events.db`);
+const cBRON_db = new Database(`cBRON_events.db`);
+const ctGBP_db = new Database(`ctGBP_events.db`);
+const cWETH_db = new Database(`cWETH_events.db`);
+const cZAMA_db = new Database(`cZAMA_events.db`);
 
 async function main() {
   let sleepRate = getArg("--sleep");
@@ -93,7 +96,7 @@ async function main() {
     endBlock = finalBlock;
   }
 
-  let checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `combined_checkpoint.txt`), token);
+  let checkpoint = await loadCheckpoint(path.join(__dirname, "checkpoints", `combined_checkpoint.txt`));
   const numItems = await loadNumItems(path.join(__dirname, "checkpoints", `combined_numItems.txt`));
 
   let startBlock = getArg("--startBlock");
@@ -102,18 +105,12 @@ async function main() {
     checkpoint = startBlock;
   }
 
-
   await addTransactions(checkpoint,endBlock,numItems,sleepRate);
 }
 
 
 async function addTransactions(startingBlock,endBlock,numItems,sleepRate) {  
-    const cUSDT_db = new Database(`cUSDT_events.db`);
-    const cUSDC_db = new Database(`cUSDC_events.db`);
-    const cBRON_db = new Database(`cBRON_events.db`);
-    const ctGBP_db = new Database(`ctGBP_events.db`);
-    const cWETH_db = new Database(`cWETH_events.db`);
-    const cZAMA_db = new Database(`cZAMA_events.db`);
+   
     
     const provider = hre.ethers.provider; 
 
@@ -160,10 +157,10 @@ async function addTransactions(startingBlock,endBlock,numItems,sleepRate) {
         }
 
         // wraps all "insert log" actions into a single transaction
-        const insertLogsTx = db.transaction((rows, whichDb) => {
+        /*const insertLogsTx = whichDb.transaction((rows, whichDb) => {
             for (const row of rows) addToDb(whichDb,row);
           });
-
+*/
         // TODO: How do we handle internal transactions here? What if someone wraps/unwraps via a contract, such that the original call isn't one of our expected function signautres
     
         const { chainId } = await provider.getNetwork();
@@ -207,12 +204,34 @@ async function addTransactions(startingBlock,endBlock,numItems,sleepRate) {
           groups.get(row.address).push(row);
         }
 
-        insertLogsTx(groups[cBRON_address], cBRON_db);
-        insertLogsTx(groups[ctGBP_address], ctGBP_db);
-        insertLogsTx(groups[cUSDC_address], cUSDC_db);
-        insertLogsTx(groups[cUSDT_address], cUSDT_db);
-        insertLogsTx(groups[cWETH_address], cWETH_db);
-        insertLogsTx(groups[cZAMA_address], cZAMA_db);
+        const insertLogsTx_cBRON = cBRON_db.transaction((rows, whichDb) => {
+          for (const row of rows) addToDb(whichDb,row);
+        });
+        const insertLogsTx_ctGBP = ctGBP_db.transaction((rows, whichDb) => {
+          for (const row of rows) addToDb(whichDb,row);
+        });
+        const insertLogsTx_cUSDC = cUSDC_db.transaction((rows, whichDb) => {
+          for (const row of rows) addToDb(whichDb,row);
+        });
+        const insertLogsTx_cUSDT = cUSDT_db.transaction((rows, whichDb) => {
+          for (const row of rows) addToDb(whichDb,row);
+        });
+        const insertLogsTx_cWETH = cWETH_db.transaction((rows, whichDb) => {
+          for (const row of rows) addToDb(whichDb,row);
+        });
+        const insertLogsTx_cZAMA = cZAMA_db.transaction((rows, whichDb) => {
+          for (const row of rows) addToDb(whichDb,row);
+        });
+
+        if(groups.has(cBRON_address.toLowerCase())) { insertLogsTx_cBRON(groups.get(cBRON_address.toLowerCase()), cBRON_db); }
+        if(groups.has(ctGBP_address.toLowerCase())) { insertLogsTx_ctGBP(groups.get(ctGBP_address.toLowerCase()), ctGBP_db); }
+        if(groups.has(cUSDC_address.toLowerCase())) { insertLogsTx_cUSDC(groups.get(cUSDC_address.toLowerCase()), cUSDC_db); }
+        if(groups.has(cUSDT_address.toLowerCase())) { insertLogsTx_cUSDT(groups.get(cUSDT_address.toLowerCase()), cUSDT_db); }
+        if(groups.has(cWETH_address.toLowerCase())) { insertLogsTx_cWETH(groups.get(cWETH_address.toLowerCase()), cWETH_db); }
+        if(groups.has(cZAMA_address.toLowerCase())) { insertLogsTx_cZAMA(groups.get(cZAMA_address.toLowerCase()), cZAMA_db); }
+        
+
+        
 
         //records last block scanned so +9
         await fs.writeFile(path.join(__dirname, "checkpoints", `combined_checkpoint.txt`), (currentBlock+9).toString(), (err) => { 
@@ -233,7 +252,7 @@ async function addTransactions(startingBlock,endBlock,numItems,sleepRate) {
 
     }
     finally {
-      await db.close();
+      await closeDbs();
       console.log("closed db");
 
       console.log(`checkpoint block = ${currentBlock+9}`);
@@ -273,6 +292,17 @@ function addToDb(db, row) {
       @label
     )
   `);
+
+  insertLog.run(row);
+}
+
+async function closeDbs() {
+  await cBRON_db.close();
+  await ctGBP_db.close();
+  await cUSDC_db.close();
+  await cUSDT_db.close();
+  await cWETH_db.close();
+  await cZAMA_db.close();
 }
 
 

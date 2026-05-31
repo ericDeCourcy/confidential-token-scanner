@@ -198,6 +198,7 @@ async function main() {
     */
 
 
+    // TODO: remove slicing here - this is just for in-development testing
     wrapsSliced = wraps.slice(1900,);
 
    for(const row of wrapsSliced)
@@ -231,7 +232,7 @@ async function main() {
             `${wrappedAmount}`,            // min
             `${wrappedAmount}`,            // max
             `${wrappedAmount}`,         // alg_min
-            `${wrappedAmount}`,         // alg_max
+            `${wrappedAmount}`,         // alg_max      
             1,            // known
             '[]',         // linked_handles
             "WRAP",         // label_prefix
@@ -241,6 +242,11 @@ async function main() {
             row.block_number             // block
         );
    }
+
+   //TODO: what other actions should we consider?
+    // unwraps - define handles as well but will need to see the linked finalize unwrap
+    // transfers - indicate handles which are being used. Could find some linkage
+    // lookup for "linked handles" which include some value we care about
    
     
 
